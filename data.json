@@ -1,0 +1,261 @@
+{
+  "name": "Gossamer",
+  "children": [
+    {
+      "name": "DemoApp",
+      "comments": "Client",
+      "children": [
+        {
+          "name": "CommConnection",
+          "url": "",
+          "comments": "1. Forms connection with leader\n2. Holds queue for messages\n3. Handler for listening to messages from cluster",
+          "dependsOn": [
+            "gash.router.client",
+            "CommandMessage",
+            "io.netty"
+          ],
+          "dependents": [
+            "MessageSender"
+          ],
+          "host": {
+            "Client": []
+          }
+        },
+        {
+          "name": "MessageClient",
+          "dependsOn": [
+            "gash.router.client",
+            "pipe.common",
+            "routing.Pipe"
+          ],
+          "comments": "#ToDO: Add all commands in this and reduce bloat in others",
+          "host": {
+            "Client": []
+          }
+        },
+        {
+          "name": "MessageSender",
+          "dependsOn": [
+            "com.google.protobuf",
+            "io.netty",
+            "pipe.Common",
+            "routing.Pipe",
+            "global.Constants",
+            "CommConnection",
+            "MessageCreator",
+            "WriteChannel"
+          ],
+          "comments": "1. Send Messages to cluster",
+          "children": []
+        },
+        {
+          "name": "CommandMessage",
+          "dependsOn": [
+            "routing.Pipe.CommandMessage"
+          ],
+          "comments": "Not using, just printing incoming message."
+        },
+        {
+          "name": "ClientConn",
+          "comments": "Accepts connect requests from cluster followers and passes onto CommInit which in itself passes request handling to CommHandler",
+          "dependsOn": [
+            "CommInit"
+          ],
+          "children": [
+            {
+              "name": "CommHandler",
+              "comments": "1. Listens on channel for cluster responses 2. Passes handling of message responsibility to MessageHandler",
+              "dependsOn": [
+                "gash.router.client",
+                "routing.Pipe"
+              ],
+              "children": [
+                {
+                  "name": "MessageHandler",
+                  "comments": "1. Handles actual reads coming from cluster 2. Creates files from chunks",
+                  "dependsOn": [
+                    "gash.router.client",
+                    "globals.Constants",
+                    "routing.Pipe",
+                    "com.google.protobuf"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MessageApp",
+      "comments": "Server",
+      "children": [
+        {
+          "name": "MessageServer",
+          "dependsOn": [
+            "gash.router.Container",
+            "io.netty"
+          ],
+          "comments": "1. Initializes server thread\n2. Forms connection between other servers",
+          "children": [
+            {
+              "name": "ServerState",
+              "comments": "1. Inits Inbound and Outbound Command and Work Message Queues\n2. Init Work Steal thread\n3. Handler for election Messages - passes resp to ElectionHandler",
+              "dependsOn": [
+                "gash.router.container",
+                "gash.router.server.tasks",
+                "io.netty",
+                "gash.router.server.edges"
+              ],
+              "host": {
+                "Server": []
+              },
+              "children": [
+                {
+                  "name": "ElectionHandler",
+                  "comments": "1. Init election\n2. Ask for vote\n3. Build requests and responses for voting."
+                },
+                {
+                  "name": "InboundCommandMessageQueueHandler",
+                  "comments": "1. Handles all incoming Command Messages 2. Saves chunks to DB",
+                  "dependsOn": [
+                    "database",
+                    "gash.router.client",
+                    "io.netty",
+                    "pipe.Work"
+                  ]
+                },
+                {
+                  "name": "InboundWorkMessageQueueHandler",
+                  "comments": "1. Handles incoming Work Messages\n2. Saves file chunks to database",
+                  "dependsOn": [
+                    "io.netty",
+                    "database",
+                    "pipe.Work",
+                    "gash.router.Client"
+                  ]
+                },
+                {
+                  "name": "OutboundWorkMessageQueueHandler",
+                  "dependsOn": [
+                    "io.netty",
+                    "pipe.Work"
+                  ]
+                },
+                {
+                  "name": "OutboundCommandMessageQueueHandler",
+                  "dependsOn": [
+                    "io.netty",
+                    "routing.Pipe"
+                  ]
+                },
+                {
+                  "name": "WorkStealHandler",
+                  "comments": "Create and send Steal Requests to leader node",
+                  "dependsOn": [
+                    "gash.router.server.edges",
+                    "pipe.election.Election",
+                    "pipe.work.Work"
+                  ]
+                },
+                {
+                  "name": "QueueHandler",
+                  "comments": "1. Enqueue and Deque all queues on server",
+                  "dependsOn": [
+                    "pipe.work",
+                    "routing.Pipe"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "CommandInit",
+              "comments": "Init CommandHandler",
+              "dependsOn": [
+                "io.netty",
+                "routing.Pipe",
+                "gash.router.Container"
+              ],
+              "children": [
+                {
+                  "name": "CommandHandler",
+                  "comments": "1. handle all Command Messages at Server 2. Service all read and write messages",
+                  "dependsOn": [
+                    "pipe.common",
+                    "redis",
+                    "io.netty",
+                    "gash.router.client",
+                    "gash.router.server",
+                    "database",
+                    "com.google.Protobuf"
+                  ],
+                  "host": {
+                    "Server": []
+                  }
+                }
+              ]
+            },
+            {
+              "name": "WorkInit",
+              "comments": "Init channel for handling Work Messages",
+              "dependsOn": [
+                "io.netty",
+                "pipe.Work"
+              ],
+              "host": {
+                "Server": []
+              },
+              "children": [
+                {
+                  "name": "WorkHandler",
+                  "comments": "1) handles WorkSteal Messages\n2) handles Election Messages",
+                  "dependsOn": [
+                    "com.google.protobuf",
+                    "gash.router.container",
+                    "pipe.common.Common",
+                    "pipe.work.Work",
+                    "redis",
+                    "io.netty",
+                    "database"
+                  ],
+                  "host": {
+                    "Server": []
+                  }
+                }
+              ]
+            },
+            {
+              "name": "EdgeMonitor",
+              "comments": "1) Adds new node to cluster\n2) Broadcasts messages to cluster",
+              "dependsOn": [
+                "Replication",
+                "gash.router.server",
+                "io.netty",
+                "pipe.Common"
+              ],
+              "host": {
+                "Server": []
+              },
+              "children": [
+                {
+                  "name": "DataReplicationManager",
+                  "dependsOn": [
+                    "database",
+                    "gash.router.server",
+                    "io.netty",
+                    "pipe.work"
+                  ],
+                  "comments": "Replicate data to new nodes",
+                  "host": {
+                    "Server": []
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "url": "https://github.com/virajnilakh/DistributedFileStorageAndSharing"
+}
