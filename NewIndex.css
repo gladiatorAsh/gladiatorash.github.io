@@ -1,0 +1,9 @@
+.site{
+    display: grid;
+    grid-template-rows: 1fr 1fr 1fr 1fr 1fr 1fr;
+}
+
+.masthead{
+    content: url('https://www.ashutoshysingh.com/assets/img/simon-lehmann-403574-unsplash.jpg')
+}
+
