@@ -37,7 +37,7 @@ a:hover, a:focus,
 .nav-pills > li.active > a, .nav-pills > li.active > a:focus, .nav-pills > li.active > a:hover,
 .nav-panels > li.active > a, .nav-panels > li.active > a:focus, .nav-panels > li.active > a:hover,
 #ajax-loader:before,
-.owl-pagination .owl-page.active > span {
+.owl-pagination {
 	background-color: #3aa8db; 
 }
 
