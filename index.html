@@ -5,7 +5,7 @@
     <!-- Meta -->
     <meta name="theme-color" content="#3aa8db"/>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=5" />
     <meta name="Description" content="A brief introduction to my life and my work">
 
     <!-- Title -->
@@ -42,10 +42,10 @@
         <nav id="main-menu">
             <ul class="nav nav-vertical list-inline social-buttons">
 
-                <li><a href="#top"><span>Start</span></a></li>
-                <li><a href="assets/files/Resume.pdf"><span>Resume</span></a></li>
-                <li><a href="#testimonials"><span>Testimonials</span></a></li>
-                <li><a href="#contact"><span>Contact</span></a></li>
+                <li><a href="#top">Start</a></li>
+                <li><a href="assets/files/Resume.pdf">Resume</a></li>
+                <li><a href="#testimonials">Testimonials</a></li>
+                <li><a href="#dvcontact">Contact</a></li>
             </ul>
         </nav>
         <!-- Social Media -->
@@ -68,7 +68,7 @@
     <!-- Content -->
     <div id="content" class="bg-white">
         <!-- Section - Home -->
-        <section id="start" name="start" class="section fullheight bg-secondary dark padding-v-60">
+        <section id="start" class="section fullheight bg-secondary dark padding-v-60">
             <!-- BG Image -->
             <div class="bg-image animated infinite zooming"><img src="assets/img/photos/it-bg01.jpg" alt="..."></div>
             <!-- Top -->
@@ -87,7 +87,7 @@
         </section>
         <!-- Section - Home / End -->
         <!-- Section - Resume -->
-        <section id="resume" name="resume" class="section padding-v-60">
+        <section id="resume" class="section padding-v-60">
             <!-- Content -->
             <div class="container container-wide">
                 <h6 class="margin-b-50">Resume</h6>
@@ -335,7 +335,8 @@
     -->
         
         <!-- Section - Testimonials -->
-        <section id="testimonials" name="testimonials" class="section bg-primary dark padding-v-60">
+        <div>
+        <section id="testimonials" class="section bg-primary dark padding-v-60">
             <!-- Content -->
             <div class="container container-wide">
                 <h6 class="margin-b-50">Testimonials</h6>
@@ -411,9 +412,11 @@
             </div>
 
         </section>
+    </div>
         <!-- Section - Testimonials / End -->
         <!-- Section - Contact -->
-        <section id="contact" name="contact" class="section padding-v-60 min-fullheight">
+        <div id="dvcontact">
+        <section id="contact" class="section padding-v-60 min-fullheight">
             <!-- Contact Box -->
             <div class="contact-box bg-secondary dark animated" data-animation="flipInY">
                 <h1>Don’t hesitate to <strong>contact me</strong>!</h1>
@@ -432,8 +435,9 @@
                 <!-- FB Like -->
             </div>
         </section>
-        <!-- Section - Contact / End -->
     </div>
+        <!-- Section - Contact / End -->
+        </div>
     <!-- Content / End -->
     <!-- Mobile Navigation -->
     <a href="#" id="mobile-nav-toggle" class="icon icon-circle icon-sm icon-primary icon-hover visible-xs visible-sm" data-target="mobile-nav">
