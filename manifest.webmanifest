@@ -1,0 +1,15 @@
+{
+    "name": "ashutosh singh",
+    "short_name": "ashutosh",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#3aa8db",
+    "theme_color":"#3aa8db",
+    "description": "Ashutosh's web site",
+    "icons": [{
+      "src": "assets/img/photos/icon127.gif",
+      "sizes": "127x127",
+      "type": "image/gif"
+    }]
+  }
+  
