@@ -8,8 +8,13 @@
     "description": "Ashutosh's web site",
     "icons": [{
       "src": "assets/img/photos/icon127.gif",
-      "sizes": "127x127",
+      "sizes": "127127",
       "type": "image/gif"
+    },
+    {
+      "src": "assets/img/photos/image576x768.jpg",
+      "sizes": "576x768",
+      "type": "image/jpeg"
     }]
   }
   
