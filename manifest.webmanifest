@@ -7,14 +7,14 @@
     "theme_color":"#3aa8db",
     "description": "Ashutosh's web site",
     "icons": [{
-      "src": "assets/img/photos/icon127.gif",
+      "src": "assets/img/photos/icon127.png",
       "sizes": "127127",
-      "type": "image/gif"
+      "type": "image/png"
     },
     {
-      "src": "assets/img/photos/image576x768.jpg",
+      "src": "assets/img/photos/image576x768.png",
       "sizes": "576x768",
-      "type": "image/jpeg"
+      "type": "image/png"
     }]
   }
   
