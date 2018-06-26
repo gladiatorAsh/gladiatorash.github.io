@@ -1,7 +1,7 @@
 importScripts('cache-polyfill.js');
 
 const version = 0.1;
-const cacheName = ashwebsite;
+const cacheName = 'ashwebsite';
 
 self.addEventListener('install', function(e) {
  e.waitUntil(
