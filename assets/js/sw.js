@@ -1,5 +1,3 @@
-//importScripts('cache-polyfill.js');
-
 const version = 0.1;
 const cacheName = 'ashwebsite';
 
