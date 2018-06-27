@@ -15,7 +15,7 @@ self.addEventListener('install', function(e) {
 
        '/assets/files/Resume.pdf',
 
-       
+      
        '/assets/js/core.min.js',
        '/assets/js/jquery-2.0.0.min.js',
        '/assets/js/jquery.typist.min.js',
