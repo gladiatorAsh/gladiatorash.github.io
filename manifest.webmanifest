@@ -1,20 +1,21 @@
 {
-    "name": "ashutosh singh",
-    "short_name": "ashutosh",
-    "start_url": ".",
-    "display": "standalone",
-    "background_color": "#3aa8db",
-    "theme_color":"#3aa8db",
-    "description": "Ashutosh's web site",
-    "icons": [{
-      "src": "assets/img/photos/icon127.png",
-      "sizes": "127127",
-      "type": "image/png"
+  "name": "ashutosh singh",
+  "short_name": "ashutosh",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#3aa8db",
+  "theme_color":"#3aa8db",
+  "description": "Ashutosh's web site",
+  "icons": [
+    {
+        "src": "/android-chrome-192x192.png",
+        "sizes": "192x192",
+        "type": "image/png"
     },
     {
-      "src": "assets/img/photos/image576x768.png",
-      "sizes": "576x768",
-      "type": "image/png"
-    }]
-  }
-  
+        "src": "/android-chrome-384x384.png",
+        "sizes": "384x384",
+        "type": "image/png"
+    }
+]
+}
