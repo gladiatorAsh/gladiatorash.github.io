@@ -5,7 +5,6 @@ self.addEventListener('install', function(e) {
  e.waitUntil(
    caches.open(cacheName).then(function(cache) {
      return cache.addAll([
-      '/',
       'assets/css/styles.css',
       'assets/css/theme.min.css',
       'assets/css/color/blue-beige.css',
