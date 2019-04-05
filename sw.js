@@ -5,6 +5,8 @@ self.addEventListener('install', function(e) {
  e.waitUntil(
    caches.open(cacheName).then(function(cache) {
      return cache.addAll([
+      '',
+      'index.html',
       'assets/css/styles.css',
       'assets/css/theme.min.css',
       'assets/css/color/blue-beige.css',
@@ -42,6 +44,8 @@ self.addEventListener('fetch', function(event) {
         cache.put(event.request, response.clone());
         return response;
       });
+    }).catch(function(t){
+        return console.warn('Couldn\'t serve response for "%s" from cache: %O', event.request.url, t), fetch(event.request)
     })
   );
 });
