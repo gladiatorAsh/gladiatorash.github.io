@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, Download, Github, Linkedin, Mail, MapPin, Terminal } from "lucide-react";
+import { ArrowUpRight, Download, Github, Linkedin, Mail, MapPin, Quote, Terminal } from "lucide-react";
 import { ArchitectureGallery } from "@/components/architecture-gallery";
 import { CareerTimeline } from "@/components/career-timeline";
 import { Reveal } from "@/components/reveal";
@@ -13,6 +13,7 @@ import {
   profile,
   projects,
   skillGroups,
+  testimonials,
   technicalSections
 } from "@/lib/portfolio";
 import { cn } from "@/lib/utils";
@@ -148,6 +149,40 @@ export default function Home() {
 
       <Section id="architecture" eyebrow="Architecture Gallery" title="Clickable systems with the tradeoffs exposed.">
         <ArchitectureGallery />
+      </Section>
+
+      <Section id="testimonials" eyebrow="Testimonials" title="Colleagues and leaders on ownership, delivery, and technical judgment.">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {testimonials.map((testimonial, index) => (
+            <Reveal key={testimonial.name} delay={index * 0.03}>
+              <Card className="flex h-full flex-col p-5 transition hover:-translate-y-1 hover:border-azure/45">
+                <Quote className="h-5 w-5 text-azure" />
+                <p className="mt-5 flex-1 text-sm leading-7 text-slate-300">{testimonial.quote}</p>
+                <div className="mt-6 flex items-center gap-3 border-t border-white/10 pt-5">
+                  {testimonial.image ? (
+                    <img
+                      src={testimonial.image}
+                      alt=""
+                      className="h-12 w-12 rounded-full border border-white/10 object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-azure/30 bg-azure/10 font-semibold text-azure">
+                      {testimonial.name
+                        .split(" ")
+                        .map((part) => part[0])
+                        .join("")
+                        .slice(0, 2)}
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-semibold text-white">{testimonial.name}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">{testimonial.title}</p>
+                  </div>
+                </div>
+              </Card>
+            </Reveal>
+          ))}
+        </div>
       </Section>
 
       <Section id="technical" eyebrow="Technical Knowledge Base" title="Field notes for AI architecture, retrieval, agents, and performance.">
