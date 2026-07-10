@@ -19,11 +19,11 @@ export const metadata: Metadata = {
   title: "Ashutosh Singh | Lead Azure AI Engineer",
   description:
     "Premium portfolio for Ashutosh Singh, Lead Azure AI Engineer building enterprise AI systems with Azure OpenAI, RAG, .NET, React, and Python.",
-  metadataBase: new URL("https://ashutoshysingh.com"),
+  metadataBase: new URL("https://www.ashutoshysingh.com"),
   openGraph: {
     title: "Ashutosh Singh | Lead Azure AI Engineer",
     description: "Enterprise AI systems, Azure OpenAI, RAG, document intelligence, and agentic workflows.",
-    url: "https://ashutoshysingh.com",
+    url: "https://www.ashutoshysingh.com",
     siteName: "Ashutosh Singh",
     type: "website"
   },
