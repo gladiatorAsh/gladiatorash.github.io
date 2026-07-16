@@ -64,12 +64,12 @@ export default function Home() {
       <section id="home" className="section-shell flex items-center">
         <div className="mx-auto w-full max-w-6xl">
           <Reveal>
-            <p className="font-mono text-sm uppercase tracking-[0.28em] text-azure">Lead Azure AI Engineer</p>
+            <p className="font-mono text-sm uppercase tracking-[0.28em] text-azure">AI Engineer</p>
             <h1 className="mt-5 max-w-5xl text-5xl font-bold leading-[1.02] text-white sm:text-6xl lg:text-7xl">
               {profile.name}
             </h1>
             <p className="mt-6 max-w-3xl text-xl leading-9 text-slate-300">
-              Building enterprise AI systems using Azure OpenAI, RAG, .NET, React and Python.
+              Building enterprise AI systems using OpenAI, RAG, .NET, React and Python.
             </p>
             <p className="mt-5 max-w-3xl text-base leading-8 text-slate-400">{profile.summary}</p>
             <div className="mt-9 flex flex-wrap gap-3">
