@@ -15,7 +15,7 @@ import {
 
 export const profile = {
   name: "Ashutosh Singh",
-  title: "Lead Azure AI Engineer",
+  title: "AI Engineer",
   location: "Santa Clara, CA",
   email: "ashutoshsingh1989@gmail.com",
   phone: "669-261-2485",
@@ -23,7 +23,7 @@ export const profile = {
   github: "https://github.com/gladiatorAsh",
   linkedin: "https://linkedin.com/in/ashutoshysingh",
   summary:
-    "Azure AI Engineer and Team Lead with 15+ years designing enterprise-scale AI platforms, RAG architectures, document intelligence systems, and distributed cloud applications."
+    "AI Engineer and Team Lead with 15+ years designing enterprise-scale AI platforms, RAG architectures, document intelligence systems, and distributed cloud applications."
 };
 
 export const navItems = [
@@ -46,7 +46,7 @@ export const metrics = [
 export const timeline = [
   {
     company: "Tech Mahindra",
-    role: "Team Lead / Azure AI Engineer",
+    role: "Team Lead / AI Engineer",
     duration: "Dec 2018 - Present",
     context: "Microsoft and Applied Materials contract programs",
     achievements: [
@@ -56,7 +56,7 @@ export const timeline = [
       "Managed engineering teams of up to 20 people, running design reviews, unblocking delivery, and mentoring engineers on React, .NET, Azure, and AI patterns.",
       "Owned Azure infrastructure across App Services, Functions, Logic Apps, Key Vault, Redis, Blob Storage, Azure AI Search, Azure AI Foundry, and CI/CD pipelines."
     ],
-    stack: ["Azure OpenAI", "Azure AI Search", "Azure AI Foundry", ".NET", "React", "Python", "Logic Apps", "Redis"],
+    stack: ["OpenAI", "Azure AI Search", "Azure AI Foundry", ".NET", "React", "Python", "Logic Apps", "Redis"],
     architecture:
       "Event-driven Azure platform with API orchestration, retrieval pipelines, secure document processing, and telemetry-backed feedback loops."
   },
@@ -117,8 +117,8 @@ export const projects = [
   {
     title: "Agent Assist - Document Intelligence Platform",
     period: "2025 - Present",
-    problem: "High-volume enterprise documents required multilingual OCR, classification, extraction, validation, and summarization without overwhelming human agents.",
-    solution: "Designed a multi-agent Azure AI Foundry system that routes documents through specialized AI workers and validation checkpoints.",
+    problem: "High-volume enterprise documents needed multilingual OCR, classification, extraction, validation, and summarization at scale without overwhelming human agents.",
+    solution: "Built a multi-agent Azure AI Foundry workflow that processes 70K+ documents per month through routing, validation, and review checkpoints.",
     architecture: "Document ingress, OCR, language detection, classifier, extraction agents, human review queues, and analytics feedback loops.",
     stack: ["Azure AI Foundry", "Document Intelligence", "Azure OpenAI", "Python", "Logic Apps", "Functions", "Dynamics CRM"],
     challenges: ["Latency control across multi-step pipelines", "Cost-aware OCR and LLM usage", "Reliable validation for imperfect documents"],
@@ -129,8 +129,8 @@ export const projects = [
   {
     title: "Crystal RAG + Copilot Platform",
     period: "2024 - Present",
-    problem: "Knowledge workers needed grounded answers across Teams, CRM, and Office apps with enterprise controls and low-latency retrieval.",
-    solution: "Built an Azure RAG platform with hybrid search, chunking strategies, API optimization, and retrieval tuning.",
+    problem: "Knowledge workers needed grounded answers across Teams, CRM, and Office apps with enterprise controls and low-latency retrieval for 2K+ active users.",
+    solution: "Delivered a secure Azure RAG platform with hybrid search, grounded citations, and feedback loops for CRM, Teams, and Office experiences.",
     architecture: "Content ingestion, enrichment, Azure AI Search, re-ranking, prompt orchestration, secure API tier, and Teams/Office frontends.",
     stack: ["Azure OpenAI", "Azure AI Search", "Azure AI Foundry", "Python", "Teams", "Office", "React"],
     challenges: ["Permission-aware retrieval", "Prompt drift", "Grounded citation quality", "Feedback visibility across multiple data sources"],
@@ -141,7 +141,7 @@ export const projects = [
   {
     title: "EPG Taiwan Plant Enablement",
     period: "Applied Materials",
-    problem: "A new Taiwan plant needed process-specific functionality, data migration, and regulatory reporting support without disrupting existing plant integrations.",
+    problem: "A new Taiwan plant needed plant-specific workflows, data migration, and reporting support without disrupting existing integrations.",
     solution: "Led backend and data workstreams to extend .NET APIs, SQL Server schemas, and migration flows for Taiwan-specific process rules.",
     architecture: ".NET 6 API extensions, SQL Server schema changes, data validation workflows, migration support, and stakeholder sign-off loops.",
     stack: [".NET 6", "SQL Server", "Web API", "Data Migration", "Process Engineering"],
@@ -153,8 +153,8 @@ export const projects = [
   {
     title: "Almanac Process Engineering Analytics",
     period: "Applied Materials",
-    problem: "Process engineers needed a single view of operational data across multiple platforms to analyze trends, compare results, and generate charts and reports.",
-    solution: "Built and supported an analytics application integrating platform data into Angular, D3.js, and .NET Web API experiences.",
+    problem: "Process engineers needed a single view of operational data across multiple platforms to analyze trends, compare results, and create charts and reports.",
+    solution: "Built and supported an analytics experience that integrated plant data into Angular, D3.js, and .NET Web API workflows for faster engineering review.",
     architecture: "Angular application, .NET 6 API, SQL Server and MongoDB-backed data views, D3.js visualization layer, and client validation workflows.",
     stack: [".NET 6", "Angular", "D3.js", "SQL Server", "MongoDB"],
     challenges: ["Combining data from different systems", "Interactive chart performance", "Client-facing support and validation"],
@@ -165,8 +165,8 @@ export const projects = [
   {
     title: "Unified Action Tracker",
     period: "Enterprise platform rebuild",
-    problem: "Large teams were using fragmented ADO workflows that slowed visibility, ownership, and reporting.",
-    solution: "Led a greenfield React and .NET multi-tenant platform replacing the workflow with a dedicated user experience.",
+    problem: "Large teams were using fragmented ADO workflows that slowed visibility, ownership, and reporting across global operations.",
+    solution: "Led a greenfield React and .NET multi-tenant platform that replaced scattered workflows with a dedicated user experience and analytics dashboards.",
     architecture: "React application, .NET API, optimized data model, migration tooling, Redis-backed low-latency paths, and dashboards.",
     stack: ["React", ".NET", "SQL", "Redis", "Azure App Service", "CI/CD"],
     challenges: ["Migrating 10K+ records with zero data loss", "Global reliability expectations", "Multi-tenant data boundaries"],
@@ -177,8 +177,8 @@ export const projects = [
   {
     title: "Microsoft 365 Admin Center Feedback Platform",
     period: "Microsoft contract",
-    problem: "Product teams needed reliable, non-intrusive feedback capture inside a globally used admin experience for enterprise IT administrators.",
-    solution: "Developed feedback elicitation components and R&D prototypes for new feedback modalities in the M365 Admin Center.",
+    problem: "Product teams needed reliable, low-friction feedback capture inside a globally used admin experience for enterprise IT administrators.",
+    solution: "Developed feedback elicitation components and surveys that surfaced user insights in the M365 Admin Center and informed product improvements.",
     architecture: "React and .NET feedback components, SQL-backed feedback flows, Azure deployment pipelines, and product analytics handoff.",
     stack: [".NET 5", "React", "Redux", "SQL Server", "Redis", "Azure", "Teams"],
     challenges: ["Global product reliability", "Non-intrusive feedback UX", "Turning submissions into actionable product signals"],
@@ -189,8 +189,8 @@ export const projects = [
   {
     title: "Tenant Touchpoints",
     period: "Microsoft contract",
-    problem: "Sales teams needed a dependable way to track tenants, Microsoft service usage, tasks, comments, and service adoption views.",
-    solution: "Designed and delivered React and .NET features across dashboards, task management, production support, and Teams integration feasibility.",
+    problem: "Sales teams needed a dependable way to track tenants, Microsoft service usage, tasks, comments, and adoption views across a growing customer base.",
+    solution: "Delivered React and .NET features for dashboards, task management, and Teams-connected workflows, helping adoption grow from 30 to 5K+ users in two years.",
     architecture: "React and Redux frontend, .NET service layer, SQL Server data model, Azure hosting, and Teams notification exploration.",
     stack: [".NET 4", "React", "Redux", "SQL Server", "Azure", "Azure DevOps", "Teams"],
     challenges: ["Daily sales workflow reliability", "Stakeholder triage", "Feature roadmap feasibility"],
@@ -214,7 +214,7 @@ export const projects = [
     title: "Provider Link Healthcare Platform",
     period: "CitiusTech",
     problem: "Home care and hospice providers needed dependable workflows for billing, revenue management, OASIS review, and clinical compliance.",
-    solution: "Improved a healthcare full-stack application by fixing functional issues, optimizing performance, and raising code quality in a legacy .NET web stack.",
+    solution: "Improved a healthcare full-stack application by fixing functional issues, optimizing performance, and raising code quality; exception rates were reduced by roughly 98%.",
     architecture: ".NET MVC application with AngularJS and jQuery client workflows, SQL Server persistence, revenue and compliance modules, and shared quality tooling.",
     stack: [".NET MVC", "AngularJS", "JavaScript", "jQuery", "SQL Server", "Code Quality"],
     challenges: ["Legacy code maintainability", "Performance bottlenecks", "Clinical and billing workflow complexity"],
@@ -225,8 +225,8 @@ export const projects = [
   {
     title: "Department of Industries Digital Portal",
     period: "Rolta India",
-    problem: "Small-scale industry processes for Maharashtra Government needed to move from manual submissions to an online registration and certification workflow.",
-    solution: "Designed and built front-end workflows for a public-sector portal where users could register, upload information, and request operating certificates digitally.",
+    problem: "Small-scale industry processes for Maharashtra Government needed to move from manual submissions to an online registration, claims, and certification workflow.",
+    solution: "Designed and built front-end workflows for a public-sector portal that digitized submissions, document handling, and benefit processing.",
     architecture: ".NET MVC portal with jQuery and KnockoutJS views, SQL Server workflows, SharePoint integration, document upload paths, and approval-oriented screens.",
     stack: [".NET MVC", "KnockoutJS", "jQuery", "SQL Server", "SharePoint"],
     challenges: ["Digitizing government workflows", "Document-heavy user journeys", "Coordinating across a large delivery team"],
@@ -238,7 +238,7 @@ export const projects = [
     title: "Sales Target and Achievements Portal",
     period: "Kotak Mahindra Mutual Fund",
     problem: "Sales teams needed a pan-India system to upload targets and achievements, review performance, and capture manager comments.",
-    solution: "Designed and built a custom .NET MVC portal, handled deployment, fixed production issues, and worked directly with customers to refine requirements.",
+    solution: "Designed and built a custom .NET MVC portal that supported target uploads, manager review, and reporting for a distributed sales organization.",
     architecture: ".NET MVC application with LINQ data access, jQuery interactions, SQL Server storage, target upload workflows, manager review, and reporting views.",
     stack: [".NET MVC", "LINQ", "jQuery", "SQL Server", "Reporting"],
     challenges: ["Requirement discovery with business users", "Upload validation", "Manager review and comment workflows"],
