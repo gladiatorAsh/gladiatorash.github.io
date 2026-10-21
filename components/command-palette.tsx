@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
+  BookOpen,
   Copy,
   CornerDownLeft,
   Download,
@@ -76,7 +77,9 @@ export default function CommandPalette() {
       { id: "theme", label: "Toggle light / dark theme", group: "Actions", icon: SunMoon, keywords: "mode appearance", run: toggleTheme },
       { id: "email", label: "Send an email", group: "Links", icon: Mail, keywords: "mailto contact", run: () => (window.location.href = `mailto:${profile.email}`) },
       { id: "github", label: "Open GitHub", group: "Links", icon: Github, keywords: "code repos", run: () => window.open(profile.github, "_blank", "noopener") },
-      { id: "linkedin", label: "Open LinkedIn", group: "Links", icon: Linkedin, keywords: "profile", run: () => window.open(profile.linkedin, "_blank", "noopener") }
+      { id: "linkedin", label: "Open LinkedIn", group: "Links", icon: Linkedin, keywords: "profile", run: () => window.open(profile.linkedin, "_blank", "noopener") },
+      // Private study repo: only reachable from the palette, never shown on the page.
+      { id: "notes", label: "My notes", group: "Links", icon: BookOpen, keywords: "notes study prep core foundry", run: () => window.open("https://github.com/gladiatorAsh/core-foundry", "_blank", "noopener") }
     ],
     []
   );
