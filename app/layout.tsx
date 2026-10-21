@@ -1,7 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { AnchorFix } from "@/components/anchor-fix";
+import { DeferredPalette } from "@/components/deferred-palette";
+import { DisplayFontLoader } from "@/components/display-font-loader";
 import { ScrollProgress } from "@/components/scroll-progress";
+import { SpotlightTracker } from "@/components/spotlight-tracker";
+import { Toaster } from "@/components/toaster";
+import { themeInitScript } from "@/lib/client-events";
 import { profile } from "@/lib/portfolio";
 
 // Self-hosted variable fonts: no build-time call to Google Fonts, one file per family.
@@ -26,18 +32,20 @@ export const metadata: Metadata = {
     description: "Enterprise AI systems, OpenAI, RAG, document intelligence, and agentic workflows.",
     url: "https://www.ashutoshysingh.com",
     siteName: "Ashutosh Singh",
-    type: "website"
+    type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Ashutosh Singh — AI Engineer building enterprise AI systems" }]
   },
   twitter: {
     card: "summary_large_image",
     title: "Ashutosh Singh | AI Engineer",
-    description: "Enterprise AI systems, OpenAI, RAG, document intelligence, and agentic workflows."
+    description: "Enterprise AI systems, OpenAI, RAG, document intelligence, and agentic workflows.",
+    images: ["/og.png"]
   }
 };
 
 export const viewport: Viewport = {
   themeColor: "#0b1120",
-  colorScheme: "dark"
+  colorScheme: "dark light"
 };
 
 const personJsonLd = {
@@ -54,17 +62,25 @@ const personJsonLd = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>
         <a
           href="#home"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-azure focus:px-4 focus:py-2 focus:text-white"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-azure focus:px-4 focus:py-2 focus:text-[#fff]"
         >
           Skip to content
         </a>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
         <ScrollProgress />
+        <SpotlightTracker />
         {children}
+        <DeferredPalette />
+        <Toaster />
+        <DisplayFontLoader />
+        <AnchorFix />
       </body>
     </html>
   );

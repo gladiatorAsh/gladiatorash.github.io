@@ -10,7 +10,7 @@ export function CareerTimeline() {
   return (
     <div className="relative">
       <div aria-hidden="true" className="absolute left-[0.88rem] top-3 h-[calc(100%-1.5rem)] w-px bg-white/10" />
-      <div className="space-y-4">
+      <div className="dim-group space-y-4">
         {timeline.map((item, index) => (
           <details
             key={`${item.company}-${item.role}`}
@@ -22,7 +22,7 @@ export function CareerTimeline() {
               aria-hidden="true"
               className="absolute left-0 top-4 h-7 w-7 rounded-full border border-white/15 bg-background transition group-open:border-azure group-open:shadow-[0_0_24px_rgba(0,120,212,0.38)]"
             />
-            <summary className="focus-ring flex w-full cursor-pointer list-none flex-col gap-3 rounded-lg border border-white/10 bg-card/72 p-5 text-left transition hover:border-azure/40 group-open:rounded-b-none group-open:border-b-transparent sm:flex-row sm:items-start sm:justify-between [&::-webkit-details-marker]:hidden">
+            <summary className="spotlight focus-ring flex w-full cursor-pointer list-none flex-col gap-3 rounded-lg border border-white/10 bg-card/72 p-5 text-left transition hover:border-azure/40 group-open:rounded-b-none group-open:border-b-transparent sm:flex-row sm:items-start sm:justify-between [&::-webkit-details-marker]:hidden">
               <span>
                 <span className="block text-lg font-semibold text-white">{item.role}</span>
                 <span className="mt-1 block text-sm text-azure-light">
