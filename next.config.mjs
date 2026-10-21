@@ -10,6 +10,10 @@ const nextConfig = {
   trailingSlash: true,
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
   reactStrictMode: true,
+  // Inline the (small) Tailwind CSS into the HTML so it is not a render-blocking request.
+  experimental: {
+    inlineCss: true
+  },
   images: {
     unoptimized: true,
     formats: ["image/avif", "image/webp"]
