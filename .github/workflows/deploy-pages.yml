@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+  schedule:
+    - cron: "53 13 * * *"   # daily, 30 min after deals-galore refreshes /papers
   workflow_dispatch:
 
 permissions:
@@ -44,6 +46,15 @@ jobs:
 
       - name: Build static site
         run: pnpm build
+
+      - name: Add Paper Desk (/papers)
+        # Generated daily by gladiatorAsh/deals-galore (python -m paperfeed update).
+        run: |
+          mkdir -p out/papers
+          curl -fsSL --retry 3 \
+            https://raw.githubusercontent.com/gladiatorAsh/deals-galore/main/data/papers.html \
+            -o out/papers/index.html \
+            || { echo "::warning::Paper Desk page not available; /papers skipped"; rm -f out/papers/index.html; }
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
