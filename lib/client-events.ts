@@ -23,13 +23,13 @@ export function openPalette() {
 export type Theme = "dark" | "light";
 
 export function currentTheme(): Theme {
-  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
 }
 
 export function setTheme(theme: Theme) {
   const root = document.documentElement;
   root.dataset.theme = theme;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f5f7fb" : "#0b1120");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#d6d7d3" : "#17191a");
   try {
     localStorage.setItem("theme", theme);
   } catch {
@@ -61,8 +61,24 @@ export async function copyText(text: string) {
   }
 }
 
+export type ReadingMode = "plain" | "technical";
+
+export function readingMode(): ReadingMode {
+  return document.documentElement.dataset.read === "technical" ? "technical" : "plain";
+}
+
+export function setReadingMode(mode: ReadingMode) {
+  document.documentElement.dataset.read = mode;
+  try {
+    localStorage.setItem("reading", mode);
+  } catch {
+    /* storage blocked: mode still applies for this visit */
+  }
+  window.dispatchEvent(new CustomEvent("portfolio:reading", { detail: mode }));
+}
+
 /** Inline, render-blocking on purpose: sets the theme before first paint so there is no flash. */
-export const themeInitScript = `try{if(location.hash)document.documentElement.classList.add("cv-all");var t=localStorage.getItem("theme");if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t;if(t==="light"){var m=document.querySelector('meta[name="theme-color"]');m&&m.setAttribute("content","#f5f7fb")}}}catch(e){}`;
+export const themeInitScript = `try{var d=document.documentElement;if(location.hash)d.classList.add("cv-all");var t=localStorage.getItem("theme");if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";d.dataset.theme=t;var m=document.querySelector('meta[name="theme-color"]');m&&m.setAttribute("content",t==="dark"?"#17191a":"#d6d7d3");var r=localStorage.getItem("reading");if(r==="technical")d.dataset.read=r}catch(e){}`;
 
 /** Render every section for real so an in-page jump measures true positions (see .section-shell CSS). */
 export function renderAllSections() {

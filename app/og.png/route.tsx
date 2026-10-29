@@ -8,15 +8,19 @@ import { profile } from "@/lib/portfolio";
 export const dynamic = "force-static";
 
 const size = { width: 1200, height: 630 };
-
 const fontDir = join(process.cwd(), "node_modules/@fontsource");
-const stages = ["Ingest", "Retrieve", "Reason", "Validate"];
+const stages = ["request", "orchestrator", "retrieve", "verify"];
+
+const paper = "#d6d7d3";
+const ink = "#16181a";
+const graphite = "#565b5f";
+const rule = "#a9aba7";
 
 export async function GET() {
-  const [display, body, bodyBold] = await Promise.all([
-    readFile(join(fontDir, "bricolage-grotesque/files/bricolage-grotesque-latin-700-normal.woff")),
-    readFile(join(fontDir, "inter/files/inter-latin-400-normal.woff")),
-    readFile(join(fontDir, "inter/files/inter-latin-600-normal.woff"))
+  const [sans, sansMedium, mono] = await Promise.all([
+    readFile(join(fontDir, "hanken-grotesk/files/hanken-grotesk-latin-400-normal.woff")),
+    readFile(join(fontDir, "hanken-grotesk/files/hanken-grotesk-latin-500-normal.woff")),
+    readFile(join(fontDir, "martian-mono/files/martian-mono-latin-400-normal.woff"))
   ]);
 
   return new ImageResponse(
@@ -28,22 +32,16 @@ export async function GET() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          padding: "72px 80px",
-          background:
-            "radial-gradient(circle at 85% 0%, rgba(0,120,212,0.35), transparent 55%), radial-gradient(circle at 100% 100%, rgba(74,163,240,0.14), transparent 45%), #0b1120",
-          color: "#cbd5e1",
-          fontFamily: "Inter"
+          padding: "64px 80px",
+          background: paper,
+          color: ink,
+          fontFamily: "Hanken"
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 24, letterSpacing: 6, color: "#4aa3f0", textTransform: "uppercase" }}>
-          <div style={{ width: 12, height: 12, borderRadius: 999, background: "#4aa3f0", boxShadow: "0 0 18px #4aa3f0" }} />
-          {profile.title}
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontFamily: "Bricolage", fontSize: 112, lineHeight: 1, letterSpacing: -4, color: "#ffffff" }}>{profile.name}</div>
-          <div style={{ marginTop: 28, fontSize: 34, lineHeight: 1.35, maxWidth: 900, color: "#cbd5e1" }}>
-            Enterprise AI systems: RAG, document intelligence, and agentic workflows on Azure.
+        <div style={{ display: "flex", flexDirection: "column", borderTop: `2px solid ${ink}`, paddingTop: 18 }}>
+          <div style={{ fontSize: 150, lineHeight: 0.9, letterSpacing: -8, fontWeight: 400 }}>{profile.name}</div>
+          <div style={{ marginTop: 26, fontFamily: "Martian", fontSize: 22, color: graphite }}>
+            Applied AI engineer. Retrieval, agents and the platforms around them.
           </div>
         </div>
 
@@ -51,17 +49,16 @@ export async function GET() {
           <div style={{ display: "flex", alignItems: "center" }}>
             {stages.map((stage, index) => (
               <div key={stage} style={{ display: "flex", alignItems: "center" }}>
-                {index > 0 ? <div style={{ width: 44, height: 2, background: "rgba(74,163,240,0.55)" }} /> : null}
+                {index > 0 ? <div style={{ width: 36, height: 1, background: rule }} /> : null}
                 <div
                   style={{
                     display: "flex",
-                    padding: "12px 20px",
-                    borderRadius: 10,
-                    border: index === 1 ? "2px solid #4aa3f0" : "2px solid rgba(255,255,255,0.14)",
-                    background: index === 1 ? "rgba(0,120,212,0.22)" : "rgba(17,24,39,0.85)",
-                    color: "#ffffff",
-                    fontSize: 22,
-                    fontWeight: 600
+                    padding: "10px 16px",
+                    border: `1px solid ${index === 2 ? ink : rule}`,
+                    background: index === 2 ? ink : paper,
+                    color: index === 2 ? paper : ink,
+                    fontFamily: "Martian",
+                    fontSize: 20
                   }}
                 >
                   {stage}
@@ -69,16 +66,16 @@ export async function GET() {
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 26, color: "#94a3b8" }}>ashutoshysingh.com</div>
+          <div style={{ fontSize: 26, fontWeight: 500 }}>ashutoshysingh.com</div>
         </div>
       </div>
     ),
     {
       ...size,
       fonts: [
-        { name: "Bricolage", data: display, weight: 700, style: "normal" },
-        { name: "Inter", data: body, weight: 400, style: "normal" },
-        { name: "Inter", data: bodyBold, weight: 600, style: "normal" }
+        { name: "Hanken", data: sans, weight: 400, style: "normal" },
+        { name: "Hanken", data: sansMedium, weight: 500, style: "normal" },
+        { name: "Martian", data: mono, weight: 400, style: "normal" }
       ]
     }
   );

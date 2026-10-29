@@ -27,12 +27,12 @@ export const profile = {
 };
 
 export const navItems = [
-  { label: "Home", href: "#home" },
+  { label: "Intro", href: "#home" },
+  { label: "Agentic work", href: "#agents" },
   { label: "Experience", href: "#resume" },
-  { label: "Projects", href: "#projects" },
+  { label: "Earlier projects", href: "#projects" },
   { label: "Architecture", href: "#architecture" },
   { label: "Testimonials", href: "#testimonials" },
-  { label: "Technical", href: "#technical" },
   { label: "Skills", href: "#skills" },
   { label: "Contact", href: "#contact" }
 ];
@@ -114,31 +114,136 @@ export const timeline = [
   }
 ];
 
+export type AgenticProject = {
+  title: string;
+  /** One-line job of the system, shown as the chapter heading. */
+  headline: string;
+  period: string;
+  where: string;
+  plain: string[];
+  technical: string[];
+  flow: string[];
+  stack: string[];
+  proof: { label: string; value: string }[];
+  links: { label: string; href: string }[];
+};
+
+/** Agent systems: production work first, then personal agents that run on free infrastructure. */
+export const agenticProjects: AgenticProject[] = [
+  {
+    title: "Agent Assist",
+    headline: "A team of agents that reads 70,000 documents a month",
+    period: "2025 – present",
+    where: "Enterprise, production",
+    plain: [
+      "Support agents were drowning in scanned forms, emails and attachments in many languages. Agent Assist reads each document first, works out what it is, pulls out what matters and writes a short summary.",
+      "Anything the system is unsure about goes to a person, so automation never makes a silent mistake."
+    ],
+    technical: [
+      "A multi-agent Azure AI Foundry workflow: OCR and language detection, a classifier that routes by document type, specialized extraction and summarization agents, and a validator that checks every output against a schema before it reaches CRM.",
+      "Confidence thresholds route work to cheaper models first and to human review queues when they are not met. Durable Functions keep long runs resumable; telemetry tracks cost and p95 latency per step."
+    ],
+    flow: ["Ingest", "OCR + language", "Classify", "Extract agents", "Validate", "Human review", "CRM"],
+    stack: ["Azure AI Foundry", "Azure OpenAI", "Document Intelligence", "Durable Functions", "Logic Apps", "Cosmos DB", "Python", ".NET 8"],
+    proof: [
+      { label: "Documents per month", value: "70K+" },
+      { label: "Low-confidence results", value: "Human review" }
+    ],
+    links: []
+  },
+  {
+    title: "Crystal",
+    headline: "Grounded answers inside Teams, CRM and Office",
+    period: "2024 – present",
+    where: "Enterprise, production",
+    plain: [
+      "People needed answers from company knowledge without leaving the apps they work in. Crystal finds the right passages, answers with citations, and only shows content each person is allowed to see.",
+      "Every answer can be rated, and that feedback is used to improve retrieval."
+    ],
+    technical: [
+      "Hybrid retrieval on Azure AI Search (vector + BM25) with semantic and cross-encoder reranking, permission-aware filtering, and tool calling with structured outputs.",
+      "Retrieval traces, citations and user feedback land in one diagnostics view, so quality work is measured rather than guessed."
+    ],
+    flow: ["Ingest + enrich", "Index", "Hybrid search", "Rerank", "Grounded answer", "Feedback"],
+    stack: ["Azure OpenAI", "Azure AI Search", "Azure AI Foundry", "Python", "React", "Teams", "Office"],
+    proof: [
+      { label: "Active users", value: "2K+" },
+      { label: "Surfaces", value: "Teams, CRM, Office" }
+    ],
+    links: []
+  },
+  {
+    title: "Deals Galore",
+    headline: "A shopping agent that tells me when a deal is real",
+    period: "2026",
+    where: "Personal, open source",
+    plain: [
+      "Every hour it checks more than fifteen deal sites, brand stores and forums for the things on my list, decides whether each deal is genuinely good, and sends me a Telegram message when one is worth buying.",
+      "It runs entirely on free services, and adding a new item to watch is one tap on its dashboard."
+    ],
+    technical: [
+      "A scheduled GitHub Actions pipeline: RSS, Reddit, Shopify product JSON and schema.org pages feed a keyword prefilter, then batched LLM scoring on Groq with Gemini as fallback, with model discovery and per-model rate-limit handling.",
+      "Deterministic guards run after the model (budget range, brand price floors that catch fakes, per-store caps), so a confident model can't push a bad deal through. A Watch button opens a GitHub issue that a workflow merges into the config."
+    ],
+    flow: ["15+ sources", "Prefilter", "LLM scoring", "Price guards", "Telegram + dashboard"],
+    stack: ["Python", "GitHub Actions", "Groq", "Gemini", "GitHub Pages", "Telegram Bot API"],
+    proof: [
+      { label: "Runs", value: "Hourly" },
+      { label: "Hosting cost", value: "$0" }
+    ],
+    links: [
+      { label: "Source", href: "https://github.com/gladiatorAsh/deals-galore" },
+      { label: "Live dashboard", href: "https://www.ashutoshysingh.com/deals-galore/" }
+    ]
+  },
+  {
+    title: "Paper Desk",
+    headline: "A research agent that reads the new AI papers every morning",
+    period: "2026",
+    where: "Personal, open source",
+    plain: [
+      "Hundreds of AI papers come out every day. Each morning Paper Desk reads the new ones and the big labs' blogs, keeps what matters for building RAG and agent systems, and writes a short summary of each.",
+      "It also notes why each paper might matter for my work, so I can decide in seconds what to read."
+    ],
+    technical: [
+      "Pulls Hugging Face Daily Papers, the arXiv API and four lab RSS feeds, merges duplicates by arXiv id, and keeps candidates with per-topic keyword hits or high community upvotes.",
+      "An LLM scores relevance against a written reader profile and returns a TL;DR and a 'for you' line as JSON; keyword ranking takes over if the free quota runs out. The page is rebuilt into this site every day."
+    ],
+    flow: ["arXiv + HF + lab blogs", "Merge", "Topic filter", "LLM rank + summary", "/papers"],
+    stack: ["Python", "arXiv API", "Hugging Face API", "Groq", "GitHub Actions"],
+    proof: [
+      { label: "Updated", value: "Daily" },
+      { label: "Topics tracked", value: "6" }
+    ],
+    links: [
+      { label: "Read today's papers", href: "/papers/" },
+      { label: "Source", href: "https://github.com/gladiatorAsh/deals-galore/tree/main/paperfeed" }
+    ]
+  },
+  {
+    title: "AI Tools",
+    headline: "Skills that teach GitHub Copilot to build AI on Azure properly",
+    period: "2026",
+    where: "Personal, open source",
+    plain: [
+      "Coding assistants are quick to write AI features and quick to get them subtly wrong. This pack gives GitHub Copilot step-by-step playbooks for RAG, agents, evaluation and security on Azure, and Copilot loads the right one when the task needs it.",
+      "It also includes a scored catalog of open-source AI tools to help choose libraries."
+    ],
+    technical: [
+      "23 Agent Skills (SKILL.md) installable as a Copilot CLI plugin or into .github/skills, organized along one lifecycle: choose, ingest, retrieve, orchestrate, prove, secure, operate.",
+      "Skills enforce keyless Entra ID auth, the Responses API, hybrid retrieval with security trimming, least-autonomy agent design, and evals before claims. Backed by a catalog of 82 OSS tools with verified metrics and licenses."
+    ],
+    flow: ["Choose", "Ingest", "Retrieve", "Orchestrate", "Prove", "Secure", "Operate"],
+    stack: ["GitHub Copilot", "Agent Skills", "MCP", "Azure OpenAI", "Azure AI Search", "Python"],
+    proof: [
+      { label: "Skills", value: "23" },
+      { label: "Open-source tools rated", value: "82" }
+    ],
+    links: [{ label: "Source", href: "https://github.com/gladiatorAsh/ai-tools" }]
+  }
+];
+
 export const projects = [
-  {
-    title: "Agent Assist - Document Intelligence Platform",
-    period: "2025 - Present",
-    problem: "High-volume enterprise documents needed multilingual OCR, classification, extraction, validation, and summarization at scale without overwhelming human agents.",
-    solution: "Built a multi-agent Azure AI Foundry workflow that processes 70K+ documents per month through routing, validation, and review checkpoints.",
-    architecture: "Document ingress, OCR, language detection, classifier, extraction agents, human review queues, and analytics feedback loops.",
-    stack: ["Azure AI Foundry", "Document Intelligence", "Azure OpenAI", "Python", "Logic Apps", "Functions", "Dynamics CRM"],
-    challenges: ["Latency control across multi-step pipelines", "Cost-aware OCR and LLM usage", "Reliable validation for imperfect documents"],
-    lessons: ["Treat evaluation as product infrastructure", "Use routing and confidence thresholds before invoking expensive models", "Design agent workflows around clear validation contracts"],
-    github: null,
-    screenshots: ["Pipeline view", "Validation console", "Agent trace"]
-  },
-  {
-    title: "Crystal RAG + Copilot Platform",
-    period: "2024 - Present",
-    problem: "Knowledge workers needed grounded answers across Teams, CRM, and Office apps with enterprise controls and low-latency retrieval for 2K+ active users.",
-    solution: "Delivered a secure Azure RAG platform with hybrid search, grounded citations, and feedback loops for CRM, Teams, and Office experiences.",
-    architecture: "Content ingestion, enrichment, Azure AI Search, re-ranking, prompt orchestration, secure API tier, and Teams/Office frontends.",
-    stack: ["Azure OpenAI", "Azure AI Search", "Azure AI Foundry", "Python", "Teams", "Office", "React"],
-    challenges: ["Permission-aware retrieval", "Prompt drift", "Grounded citation quality", "Feedback visibility across multiple data sources"],
-    lessons: ["Retrieval quality beats prompt cleverness", "Caching should be scoped by identity and freshness requirements", "Analytics need to be part of the copilot product loop"],
-    github: null,
-    screenshots: ["Copilot response", "Search diagnostics", "Feedback dashboard"]
-  },
   {
     title: "EPG Taiwan Plant Enablement",
     period: "Applied Materials",

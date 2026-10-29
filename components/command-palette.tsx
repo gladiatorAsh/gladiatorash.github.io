@@ -15,7 +15,7 @@ import {
   SunMoon
 } from "lucide-react";
 import { navItems, profile } from "@/lib/portfolio";
-import { copyText, OPEN_PALETTE, paletteState, renderAllSections, toast, toggleTheme } from "@/lib/client-events";
+import { copyText, OPEN_PALETTE, paletteState, renderAllSections, setReadingMode, toast, toggleTheme } from "@/lib/client-events";
 import { cn } from "@/lib/utils";
 
 type Item = {
@@ -50,7 +50,9 @@ export default function CommandPalette() {
         keywords: "section go jump",
         run: () => go(item.href)
       })),
-      { id: "nav-certifications", label: "Certifications", group: "Navigate", icon: Hash, run: () => go("#certifications") },
+      { id: "nav-certifications", label: "Certifications", group: "Navigate", icon: Hash, keywords: "skills education", run: () => go("#skills") },
+      { id: "read-plain", label: "Read in plain English", group: "Actions", icon: BookOpen, keywords: "mode simple eli5 1", run: () => setReadingMode("plain") },
+      { id: "read-technical", label: "Read the technical version", group: "Actions", icon: BookOpen, keywords: "mode architecture stack 2", run: () => setReadingMode("technical") },
       {
         id: "copy-email",
         label: "Copy email address",
@@ -76,6 +78,8 @@ export default function CommandPalette() {
       },
       { id: "theme", label: "Toggle light / dark theme", group: "Actions", icon: SunMoon, keywords: "mode appearance", run: toggleTheme },
       { id: "email", label: "Send an email", group: "Links", icon: Mail, keywords: "mailto contact", run: () => (window.location.href = `mailto:${profile.email}`) },
+      { id: "papers", label: "Paper Desk: today's AI papers", group: "Links", icon: BookOpen, keywords: "research arxiv reading", run: () => (window.location.href = "/papers/") },
+      { id: "deals", label: "Deals Galore dashboard", group: "Links", icon: Github, keywords: "shopping agent deals", run: () => window.open("https://www.ashutoshysingh.com/deals-galore/", "_blank", "noopener") },
       { id: "github", label: "Open GitHub", group: "Links", icon: Github, keywords: "code repos", run: () => window.open(profile.github, "_blank", "noopener") },
       { id: "linkedin", label: "Open LinkedIn", group: "Links", icon: Linkedin, keywords: "profile", run: () => window.open(profile.linkedin, "_blank", "noopener") },
       // Private study repo: only reachable from the palette, never shown on the page.

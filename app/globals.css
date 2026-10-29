@@ -1,55 +1,47 @@
 @import "tailwindcss";
 
-@theme {
-  --color-background: #0b1120;
-  --color-card: #111827;
-  --color-azure: #0078d4;
-  --color-azure-dark: #0067b8;
-  /* Text-safe accent: #0078d4 is only 4.2:1 on the page background, this is ~7:1. */
-  --color-azure-light: #4aa3f0;
-  --font-sans: var(--font-inter);
-  --font-display: "Bricolage Display", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  /* System monospace (SF Mono / Cascadia / Menlo): saves a 41 KB font download for small labels. */
-  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Segoe UI Mono", Menlo, Consolas, monospace;
-}
-
 /*
- * Light theme.
- * Components are written against the dark palette (text-white, text-slate-300, border-white/10 …).
- * Rather than double every class with `dark:` variants, the light theme re-points the handful of
- * Tailwind colour tokens those utilities read from. `white` becomes ink, the slate ramp flips,
- * and alpha utilities like `border-white/10` turn into hairlines of ink automatically.
- * Anything that must stay literally white (text on the azure button) uses `text-[#fff]`.
+ * Design tokens. Paper-and-graphite, hairline rules, square corners; one cobalt signal colour for
+ * links, focus and "active" states only. Light is the default; dark is graphite with the same rules.
+ *
+ * The legacy token names (white, slate-*, card, azure*) are re-pointed at the new palette so older
+ * widgets (command palette, toasts, copy button) inherit the design without being rewritten.
  */
-:root {
-  --page-glow: rgba(0, 120, 212, 0.13);
-  --page-glow-2: rgba(74, 163, 240, 0.07);
-  --spotlight: rgba(74, 163, 240, 0.07);
-  --card-spotlight: rgba(74, 163, 240, 0.11);
-  --card-shadow: 0 18px 70px rgba(0, 0, 0, 0.24);
-  --grain-opacity: 0.05;
-  --flow-line: rgba(74, 163, 240, 0.35);
+@theme {
+  --color-paper: #d6d7d3;
+  --color-paper-2: #e1e2de;
+  --color-ink: #16181a;
+  --color-graphite: #565b5f;
+  --color-rule: #a9aba7;
+  --color-signal: #1d4fbf;
+
+  --color-background: var(--color-paper);
+  --color-card: var(--color-paper-2);
+  --color-white: var(--color-ink);
+  --color-slate-100: var(--color-ink);
+  --color-slate-200: var(--color-ink);
+  --color-slate-300: #34383b;
+  --color-slate-400: var(--color-graphite);
+  --color-slate-500: var(--color-graphite);
+  --color-slate-700: var(--color-rule);
+  --color-azure: var(--color-signal);
+  --color-azure-dark: var(--color-signal);
+  --color-azure-light: var(--color-signal);
+
+  --font-sans: var(--font-hanken), "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-hanken), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-martian), ui-monospace, "SF Mono", Menlo, monospace;
 }
 
-:root[data-theme="light"] {
-  color-scheme: light;
-  --color-background: #f5f7fb;
-  --color-card: #ffffff;
-  --color-white: #0b1324;
-  --color-slate-100: #1e293b;
-  --color-slate-200: #1e293b;
-  --color-slate-300: #334155;
-  --color-slate-400: #475569;
-  --color-slate-500: #5b6b80;
-  --color-slate-700: #cbd5e1;
-  --color-azure-light: #0064b4;
-  --page-glow: rgba(0, 120, 212, 0.1);
-  --page-glow-2: rgba(74, 163, 240, 0.08);
-  --spotlight: rgba(0, 120, 212, 0.05);
-  --card-spotlight: rgba(0, 120, 212, 0.07);
-  --card-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 40px rgba(15, 23, 42, 0.06);
-  --grain-opacity: 0.025;
-  --flow-line: rgba(0, 100, 180, 0.3);
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-paper: #17191a;
+  --color-paper-2: #1f2123;
+  --color-ink: #e3e4e0;
+  --color-graphite: #9ca1a4;
+  --color-rule: #3f4245;
+  --color-signal: #86a8f6;
+  --color-slate-300: #c6c8c4;
 }
 
 @layer base {
@@ -60,30 +52,20 @@
   html {
     scroll-behavior: smooth;
     scroll-padding-top: 4.5rem;
-    background: var(--color-background);
-    color-scheme: dark;
-  }
-
-  :root[data-theme="light"] {
+    background: var(--color-paper);
     color-scheme: light;
   }
 
   body {
     margin: 0;
     min-height: 100vh;
-    background:
-      radial-gradient(circle at 75% 10%, var(--page-glow), transparent 30rem),
-      var(--color-background);
-    color: var(--color-slate-300);
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
-  }
-
-  /* Display face for section headings, registered after first paint by <DisplayFontLoader />. */
-  h2,
-  h3 {
-    font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    font-feature-settings: "ss01", "tnum";
   }
 
   a {
@@ -92,203 +74,258 @@
   }
 
   ::selection {
-    background: rgba(0, 120, 212, 0.38);
-    color: #fff;
+    background: var(--color-ink);
+    color: var(--color-paper);
   }
 }
 
-/* Film grain: a pre-rendered 128px noise tile. (A live SVG feTurbulence filter here cost ~1s of
-   first-frame raster on throttled mobile.) Loaded as a normal image, so it never blocks first paint. */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  pointer-events: none;
-  opacity: var(--grain-opacity);
-  background-image: url("/grain.png");
-  background-size: 128px 128px;
+/* ---- Layout ---- */
+.frame {
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 1rem;
 }
 
-/*
- * Off-screen sections skip style/layout/paint until they approach the viewport (a large share of the
- * page's load cost). Their placeholder heights are estimates, which would make in-page jumps land in
- * the wrong place, so <AnchorFix /> (and the head script, for URLs with a #hash) switches every section
- * to fully rendered just before any jump.
- */
-.section-shell {
-  padding: 6rem 1.25rem 3rem;
+@media (min-width: 768px) {
+  .frame {
+    padding: 0 2.5rem;
+  }
+}
+
+/* Off-screen chapters skip layout/paint until they approach the viewport; <AnchorFix /> and the head
+   script switch them to fully rendered before any in-page jump so positions are exact. */
+.chapter {
+  border-top: 1px solid var(--color-rule);
+  padding: 4.5rem 0 5rem;
   content-visibility: auto;
-  contain-intrinsic-size: auto 1100px;
+  contain-intrinsic-size: auto 1200px;
 }
 
-#home.section-shell,
-.cv-all .section-shell {
+.cv-all .chapter {
   content-visibility: visible;
 }
 
-#home.section-shell {
-  position: relative;
-  isolation: isolate;
-  min-height: 100svh;
-}
-
-@media (min-width: 1024px) {
-  .section-shell {
-    padding: 7rem 4rem 4rem 25rem;
-  }
-}
-
-.code-grid {
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--color-slate-400) 9%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--color-slate-400) 9%, transparent) 1px, transparent 1px);
-  background-size: 44px 44px;
-}
-
-.focus-ring:focus-visible {
-  outline: 2px solid var(--color-azure-light);
+.focus-ring:focus-visible,
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--color-signal);
   outline-offset: 3px;
 }
 
-/* ---- Hero aurora: plain layered gradients on the section background. Earlier versions used two
-   huge animated pseudo-element layers, which intermittently delayed first paint by ~1s on mobile. ---- */
-#home.section-shell {
-  background:
-    radial-gradient(ellipse 55% 60% at 88% 8%, var(--page-glow), transparent 70%),
-    radial-gradient(ellipse 40% 45% at 70% 92%, var(--page-glow-2), transparent 70%);
+/* ---- Type ---- */
+.wordmark {
+  font-size: clamp(3.4rem, 11vw, 9.5rem);
+  font-weight: 450;
+  line-height: 0.86;
+  letter-spacing: -0.055em;
 }
 
-/* ---- Cursor spotlight (page + card). Positions set by <SpotlightTracker />. ---- */
-.page-spotlight {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.4s;
-  background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 50%), var(--spotlight), transparent 70%);
+.chapter-title {
+  font-size: clamp(2.1rem, 5.2vw, 4.4rem);
+  font-weight: 420;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  max-width: 16ch;
 }
 
-:root.has-pointer .page-spotlight {
-  opacity: 1;
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
 }
 
-.spotlight {
-  position: relative;
-  isolation: isolate;
+.measure {
+  max-width: 62ch;
 }
 
-.spotlight::before {
+.link {
+  color: var(--color-signal);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+}
+
+.link:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* ---- Controls: square, outlined, with a key hint ---- */
+.key-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  min-height: 2.5rem;
+  padding: 0 0.5rem 0 0.85rem;
+  border: 1px solid var(--color-rule);
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.key-btn:hover {
+  border-color: var(--color-ink);
+}
+
+.key-btn[aria-pressed="true"] {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.25rem;
+  border: 1px solid currentColor;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  opacity: 0.7;
+}
+
+.tag {
+  display: inline-block;
+  border: 1px solid var(--color-rule);
+  padding: 0.12rem 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--color-graphite);
+}
+
+/* ---- Reading modes: both versions are server-rendered; the attribute picks one ---- */
+:root:not([data-read="technical"]) .read-technical,
+:root[data-read="technical"] .read-plain {
+  display: none;
+}
+
+/* ---- Flow line: A → B → C, drawn with rules rather than glyphs ---- */
+.flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--color-graphite);
+}
+
+.flow > li {
+  display: flex;
+  align-items: center;
+}
+
+.flow > li + li::before {
   content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  pointer-events: none;
+  width: 1.4rem;
+  height: 1px;
+  margin: 0 0.4rem;
+  background: var(--color-rule);
+}
+
+.flow > li > span {
+  border: 1px solid var(--color-rule);
+  padding: 0.18rem 0.45rem;
+  color: var(--color-ink);
+  background: var(--color-paper);
+}
+
+/* ---- Hero system map ---- */
+.system-map {
+  width: 100%;
+  height: auto;
+  color: var(--color-graphite);
+}
+
+.system-map .stroke {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+}
+
+.system-map .node:hover .stroke,
+.system-map .node:focus-visible .stroke {
+  stroke: var(--color-ink);
+  stroke-width: 1.6;
+}
+
+.system-map text {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  fill: var(--color-graphite);
+}
+
+.system-map .node:hover text {
+  fill: var(--color-ink);
+}
+
+.system-map .pulse {
+  fill: var(--color-signal);
   opacity: 0;
-  transition: opacity 0.3s;
-  background: radial-gradient(420px circle at var(--x, 50%) var(--y, 50%), var(--card-spotlight), transparent 65%);
 }
 
-@media (hover: hover) {
-  .spotlight:hover::before {
-    opacity: 1;
-  }
-
-  /* Dim the siblings of whatever card is hovered so the focused one stands out. */
-  .dim-group > * {
-    transition: opacity 0.25s ease;
-  }
-
-  .dim-group:has(> :hover) > :not(:hover) {
-    opacity: 0.55;
-  }
+/* ---- Timeline, project index (native details) ---- */
+.row-summary {
+  list-style: none;
+  cursor: pointer;
 }
 
-/* ---- Living architecture diagram ---- */
-.flow-link {
-  position: relative;
-  height: 1.75rem;
-  margin-left: 1.6rem;
-  width: 2px;
-  background: linear-gradient(var(--flow-line), var(--flow-line)) center / 1px 100% no-repeat;
+.row-summary::-webkit-details-marker {
+  display: none;
 }
 
-.flow-packet {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: 7px;
-  height: 7px;
-  margin-left: -3.5px;
-  border-radius: 9999px;
-  background: var(--color-azure-light);
-  box-shadow: 0 0 12px 2px color-mix(in srgb, var(--color-azure-light) 60%, transparent);
-  opacity: 0;
+details[open] > .row-summary .row-toggle {
+  transform: rotate(45deg);
 }
 
-.flow-node-pulse {
-  position: relative;
-}
-
-.flow-node-pulse::after {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  border: 1.5px solid var(--color-azure-light);
-  opacity: 0;
-  pointer-events: none;
+.row-toggle {
+  transition: transform 0.2s;
 }
 
 /* ---- Command palette ---- */
 .palette::backdrop {
-  background: rgba(2, 6, 23, 0.55);
-  backdrop-filter: blur(4px);
+  background: color-mix(in srgb, var(--color-paper) 70%, transparent);
+  backdrop-filter: blur(3px);
 }
 
-/* ---- Motion: CSS scroll-driven animations, no JavaScript ---- */
+/* ---- Reading progress ---- */
 .scroll-progress {
   transform: scaleX(0);
 }
 
+/* ---- Motion: one orchestrated moment (the map draws itself), plus reading progress ---- */
 @media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    .reveal {
-      animation: reveal-up linear both;
-      animation-timeline: view();
-      animation-range: entry 0% entry 35%;
-    }
-
+  @supports (animation-timeline: scroll()) {
     .scroll-progress {
       animation: grow-x linear both;
       animation-timeline: scroll(root);
     }
   }
 
-  .hero-enter {
-    animation: hero-in 0.6s ease-out both;
+  .system-map .draw {
+    stroke-dasharray: 1.02;
+    stroke-dashoffset: 1.02;
+    animation: draw 1.4s cubic-bezier(0.6, 0, 0.2, 1) forwards;
+    animation-delay: calc(var(--d, 0) * 70ms);
   }
 
-  /*
-   * Decorative loops are gated so they never run during page load (Lighthouse counts every frame):
-   *  - the diagram animates only while it is on screen ([data-live] set by an IntersectionObserver)
-   */
-  /* One packet travels the whole pipeline: each link animates during its own third of the cycle. */
-  [data-live] .flow-packet {
-    animation: packet 3.6s linear infinite;
-    animation-delay: calc(var(--i) * 1.2s);
+  .system-map .fade {
+    opacity: 0;
+    animation: fade 0.5s ease-out forwards;
+    animation-delay: calc(900ms + var(--d, 0) * 40ms);
   }
 
-  /* Ring animates transform/opacity only (compositor), not box-shadow (repaint every frame). */
-  [data-live] .flow-node-pulse::after {
-    animation: node-pulse 3.6s ease-out infinite;
-    animation-delay: calc(var(--i) * 1.2s);
-  }
-
-  [data-live] .live-dot {
-    animation: ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+  /* After drawing, one request travels the system every few seconds. */
+  .system-map .pulse {
+    animation: travel 6s ease-in-out 2.2s infinite;
+    offset-path: var(--route);
   }
 }
 
@@ -301,21 +338,17 @@ body::after {
   *::after {
     transition-duration: 0.01ms !important;
   }
-  /* Without motion, show the flow direction as static dots instead. */
-  .flow-packet {
-    opacity: 1;
-    top: calc(50% - 3.5px);
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
   }
 }
 
-@keyframes reveal-up {
-  from {
-    opacity: 0.001;
-    transform: translateY(18px);
-  }
+@keyframes fade {
   to {
     opacity: 1;
-    transform: none;
   }
 }
 
@@ -325,51 +358,21 @@ body::after {
   }
 }
 
-/* Transform-only so the hero text is painted (and counted for LCP) immediately. */
-@keyframes hero-in {
-  from {
-    transform: translateY(12px);
-  }
-  to {
-    transform: none;
-  }
-}
-
-@keyframes packet {
+@keyframes travel {
   0% {
-    transform: translateY(0);
+    offset-distance: 0%;
     opacity: 0;
   }
-  4% {
+  6% {
     opacity: 1;
   }
-  30% {
-    transform: translateY(calc(1.75rem - 7px));
+  70% {
+    offset-distance: 100%;
     opacity: 1;
   }
-  33.33%,
+  76%,
   100% {
-    transform: translateY(calc(1.75rem - 7px));
-    opacity: 0;
-  }
-}
-
-@keyframes ping {
-  75%,
-  100% {
-    transform: scale(2.2);
-    opacity: 0;
-  }
-}
-
-@keyframes node-pulse {
-  0% {
-    transform: scale(1);
-    opacity: 0.7;
-  }
-  25%,
-  100% {
-    transform: scale(1.45);
+    offset-distance: 100%;
     opacity: 0;
   }
 }

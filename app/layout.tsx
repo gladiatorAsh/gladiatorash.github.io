@@ -3,18 +3,22 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { AnchorFix } from "@/components/anchor-fix";
 import { DeferredPalette } from "@/components/deferred-palette";
-import { DisplayFontLoader } from "@/components/display-font-loader";
-import { ScrollProgress } from "@/components/scroll-progress";
-import { SpotlightTracker } from "@/components/spotlight-tracker";
 import { Toaster } from "@/components/toaster";
 import { themeInitScript } from "@/lib/client-events";
 import { profile } from "@/lib/portfolio";
 
 // Self-hosted variable fonts: no build-time call to Google Fonts, one file per family.
-const inter = localFont({
-  src: "../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
-  variable: "--font-inter",
+const hanken = localFont({
+  src: "../node_modules/@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-wght-normal.woff2",
+  variable: "--font-hanken",
   weight: "100 900",
+  display: "swap"
+});
+
+const martian = localFont({
+  src: "../node_modules/@fontsource-variable/martian-mono/files/martian-mono-latin-wght-normal.woff2",
+  variable: "--font-martian",
+  weight: "100 800",
   display: "swap"
 });
 
@@ -44,8 +48,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b1120",
-  colorScheme: "dark light"
+  themeColor: "#d6d7d3",
+  colorScheme: "light dark"
 };
 
 const personJsonLd = {
@@ -62,24 +66,21 @@ const personJsonLd = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang="en" className={`${hanken.variable} ${martian.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
         <a
-          href="#home"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-azure focus:px-4 focus:py-2 focus:text-[#fff]"
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:bg-ink focus:px-4 focus:py-2 focus:text-paper"
         >
           Skip to content
         </a>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
-        <ScrollProgress />
-        <SpotlightTracker />
         {children}
         <DeferredPalette />
         <Toaster />
-        <DisplayFontLoader />
         <AnchorFix />
       </body>
     </html>

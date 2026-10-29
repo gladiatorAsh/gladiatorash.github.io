@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Ashutosh",
     start_url: "/",
     display: "standalone",
-    background_color: "#0b1120",
-    theme_color: "#0b1120",
+    background_color: "#d6d7d3",
+    theme_color: "#d6d7d3",
     description: "Enterprise AI systems, RAG, document intelligence, and agentic workflows.",
     icons: [
       { src: "/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },

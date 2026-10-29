@@ -7,8 +7,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function ThemeToggle({ className }: { className?: string }) {
-  // Rendered as "dark" on the server; corrected after mount from the attribute the init script set.
-  const [theme, setThemeState] = useState<Theme>("dark");
+  // Rendered as "light" on the server; corrected after mount from the attribute the init script set.
+  const [theme, setThemeState] = useState<Theme>("light");
 
   useEffect(() => {
     setThemeState(currentTheme());
