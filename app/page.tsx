@@ -4,9 +4,11 @@ import { CareerTimeline } from "@/components/career-timeline";
 import { Citadel, SceneDirector } from "@/components/citadel";
 import { CopyEmailButton } from "@/components/copy-email-button";
 import { ReadingToggle, TopBar } from "@/components/top-bar";
-import { agentAnchor, projectAnchor } from "@/lib/citadel";
+import { agentAnchor, meshAnchor, projectAnchor } from "@/lib/citadel";
 import {
   agenticProjects,
+  agentMesh,
+  agentMeshTools,
   certifications,
   education,
   navItems,
@@ -31,6 +33,48 @@ export default function Home() {
         <main id="main" className="min-w-0 lg:order-1">
           <Hero />
 
+          <Chapter id="agentmesh" title="AgentMesh: AI for mechanical engineers">
+            <p className="mono m-0 mb-6 text-graphite">
+              {agentMesh.where}, {agentMesh.period}. The newest work, in the engineering quarter between the keep and the gate.
+            </p>
+            <p className="max-w-[26ch] text-[clamp(1.4rem,2.4vw,1.9rem)] leading-[1.1] tracking-[-0.03em]">{agentMesh.headline}</p>
+            <p className="mono read-plain m-0 mt-5 text-graphite">Plain English</p>
+            <div className="read-plain measure mt-2 flex flex-col gap-4">
+              {agentMesh.plain.map((t) => (
+                <p key={t} className="m-0">
+                  {t}
+                </p>
+              ))}
+            </div>
+            <p className="mono read-technical m-0 mt-5 text-graphite">Technical</p>
+            <div className="read-technical measure mt-2 flex flex-col gap-4">
+              {agentMesh.technical.map((t) => (
+                <p key={t} className="m-0">
+                  {t}
+                </p>
+              ))}
+            </div>
+            <ol className="read-technical flow mt-7 list-none p-0" aria-label="AgentMesh flow">
+              {agentMesh.flow.map((step) => (
+                <li key={step}>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+            <ul className="read-technical mt-4 flex list-none flex-wrap gap-1.5 p-0" aria-label="Stack">
+              {agentMesh.stack.map((s) => (
+                <li key={s} className="tag">
+                  {s}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-10">
+              {agentMeshTools.map((tool, i) => (
+                <AgentProject key={tool.title} project={tool} num={`2.${i + 1}`} anchor={meshAnchor(tool.title)} />
+              ))}
+            </div>
+          </Chapter>
+
           <Chapter id="agents" title="New: agents I build">
             <p className="measure text-graphite">
               Personal systems from this year. I design them and build them with AI coding agents doing much of the typing, and they
@@ -39,7 +83,7 @@ export default function Home() {
             </p>
             <div className="mt-10">
               {agenticProjects.map((project, i) => (
-                <AgentProject key={project.title} project={project} index={i} />
+                <AgentProject key={project.title} project={project} num={`3.${i + 1}`} anchor={agentAnchor(project.title)} />
               ))}
             </div>
           </Chapter>
@@ -167,9 +211,24 @@ function Hero() {
         <p className="mono mt-4 text-graphite">Applied AI engineer. Retrieval, agents and the platforms around them.</p>
       </div>
       <p className="measure mt-10 text-[1.08rem] leading-[1.6]">
-        I design AI systems that do real work: read documents, find the right evidence, call tools and know when to ask a person.
-        Fifteen years of shipping software, most of it written by hand, the last several building AI for enterprise teams on Azure.
+        {profile.summary} Today I build agents that do real work for engineers: they read documents, find the evidence, drive CAD tools
+        and know when to ask a person. Most of my fifteen years of code was written by hand.
       </p>
+      <dl className="mt-8 border-t border-rule">
+        {[
+          ["Role", "Applied AI Engineer and Team Lead"],
+          ["Focus", "Agentic AI and multi-agent systems, MCP tools, RAG copilots, document intelligence"],
+          ["Stack", "Azure OpenAI, Azure AI Foundry, Azure AI Search, Python, C# and .NET, React and TypeScript"],
+          ["Leadership", "Teams of up to 20 across the Bay Area and India; design reviews, coding standards, secure code"],
+          ["Based in", "Santa Clara, CA (San Francisco Bay Area)"],
+          ["Education", "M.S. Software Engineering, San José State University"]
+        ].map(([k, v]) => (
+          <div key={k} className="grid grid-cols-[6.5rem_1fr] gap-4 border-b border-rule py-2.5 text-[0.95rem]">
+            <dt className="mono pt-0.5 text-graphite">{k}</dt>
+            <dd className="m-0">{v}</dd>
+          </div>
+        ))}
+      </dl>
       <p className="measure mt-4 text-graphite">
         The citadel beside this text is a map of the site. The keep in the middle is me; the camera moves to each building as you read.
       </p>
@@ -192,8 +251,11 @@ function Hero() {
           <ReadingToggle />
         </div>
         <div className="flex flex-wrap gap-3">
+          <a className="key-btn" href="#agentmesh">
+            AgentMesh
+          </a>
           <a className="key-btn" href="#agents">
-            New agents
+            Personal agents
           </a>
           <a className="key-btn" href="#projects">
             Hand-built work
@@ -219,13 +281,12 @@ function Chapter({ id, title, children }: { id: string; title: string; children:
   );
 }
 
-function AgentProject({ project, index }: { project: (typeof agenticProjects)[number]; index: number }) {
-  const anchor = agentAnchor(project.title);
+function AgentProject({ project, num, anchor }: { project: (typeof agenticProjects)[number]; num: string; anchor: string }) {
   return (
     <article id={anchor} data-scene={anchor} className="border-t border-rule py-10">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <h3 className="m-0 text-2xl font-medium tracking-[-0.025em]">
-          <span className="mono mr-3 align-middle text-graphite">2.{index + 1}</span>
+          <span className="mono mr-3 align-middle text-graphite">{num}</span>
           {project.title}
         </h3>
         <p className="mono m-0 text-graphite">
@@ -233,21 +294,23 @@ function AgentProject({ project, index }: { project: (typeof agenticProjects)[nu
         </p>
       </div>
       <p className="mt-5 max-w-[26ch] text-[clamp(1.4rem,2.4vw,1.9rem)] leading-[1.1] tracking-[-0.03em]">{project.headline}</p>
-      <div className="read-plain measure mt-5 flex flex-col gap-4">
+      <p className="mono read-plain m-0 mt-5 text-graphite">Plain English</p>
+            <div className="read-plain measure mt-2 flex flex-col gap-4">
         {project.plain.map((t) => (
           <p key={t} className="m-0">
             {t}
           </p>
         ))}
       </div>
-      <div className="read-technical measure mt-5 flex flex-col gap-4">
+      <p className="mono read-technical m-0 mt-5 text-graphite">Technical</p>
+            <div className="read-technical measure mt-2 flex flex-col gap-4">
         {project.technical.map((t) => (
           <p key={t} className="m-0">
             {t}
           </p>
         ))}
       </div>
-      <ol className="flow mt-7 list-none p-0" aria-label={`${project.title} flow`}>
+      <ol className="read-technical flow mt-7 list-none p-0" aria-label={`${project.title} flow`}>
         {project.flow.map((step) => (
           <li key={step}>
             <span>{step}</span>
@@ -262,7 +325,7 @@ function AgentProject({ project, index }: { project: (typeof agenticProjects)[nu
         ))}
       </ul>
       <div className="mt-7 flex flex-wrap items-end justify-between gap-6">
-        <dl className="m-0 flex gap-8">
+        <dl className={`m-0 flex gap-8 ${project.proof.length ? "" : "hidden"}`}>
           {project.proof.map((p) => (
             <div key={p.label} className="flex flex-col-reverse">
               <dt className="mono text-graphite">{p.label}</dt>

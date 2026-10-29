@@ -3,13 +3,14 @@
  * camera moves to it as you read. Pure data, so the scene and the page share one source of truth.
  *
  *   keep (centre)       you: the orchestrator everything connects to
+ *   engineering (south) AgentMesh, the newest work: a hub and its specialist agents
  *   workshop (east)     new agent projects, built with AI coding agents
  *   old town (west)     case studies engineered by hand
  *   wall towers         the places I've worked (and studied), oldest beside the gate
  *   plaza (north)       testimonials, one standing stone each
  *   gate (south)        contact
  */
-import { agenticProjects, projects, testimonials, timeline } from "@/lib/portfolio";
+import { agenticProjects, agentMesh, agentMeshTools, projects, testimonials, timeline } from "@/lib/portfolio";
 
 export type BuildingKind =
   | "keep"
@@ -21,7 +22,14 @@ export type BuildingKind =
   | "hall"
   | "prism"
   | "house"
-  | "stone";
+  | "stone"
+  | "hub"
+  | "cad"
+  | "enclosure"
+  | "battery"
+  | "slab"
+  | "lab"
+  | "gear";
 
 export type Building = {
   id: string;
@@ -56,6 +64,7 @@ export const slug = (s: string) =>
 
 export const agentAnchor = (title: string) => `agent-${slug(title)}`;
 export const projectAnchor = (title: string) => `project-${slug(title)}`;
+export const meshAnchor = (title: string) => `mesh-${slug(title)}`;
 
 /** Hexagonal wall: vertices at 0°, 60°, …; the gate sits in the edge facing +z (south). */
 export const WALL_RADIUS = 34;
@@ -79,14 +88,37 @@ const workshopSpots = [
 // Old town: two great halls for the production AI platforms, then a grid of houses.
 const hallSpots = [
   { kind: "hall" as const, x: -9, z: -10 },
-  { kind: "prism" as const, x: -9, z: 9 }
+  { kind: "prism" as const, x: -11, z: 8 }
 ];
+// Engineering quarter: the AgentMesh hub between the keep and the gate, its agents in a ring.
+const MESH_HUB: [number, number] = [0, 19];
+const meshKinds: Record<string, BuildingKind> = {
+  "Creo CAD assistant": "cad",
+  "Enclosure Agent": "enclosure",
+  "Battery tools": "battery",
+  "C-bucket tools": "slab",
+  "Analysis tools": "lab",
+  "Fusion MCP tools": "gear"
+};
+
 const houseSpots: [number, number][] = [];
 for (const z of [-14, -8.4, -2.8, 2.8, 8.4, 14]) for (const x of [-22.5, -17.5]) houseSpots.push([x, z]);
 
 export const buildings: Building[] = [
   { id: "keep", kind: "keep", label: "Ashutosh Singh", anchor: "home", x: 0, z: 0 },
   { id: "gate", kind: "gate", label: "Contact", anchor: "contact", x: 0, z: GATE_Z },
+  { id: "mesh-hub", kind: "hub", label: agentMesh.title, anchor: "agentmesh", x: MESH_HUB[0], z: MESH_HUB[1] },
+  ...agentMeshTools.map((t, i) => {
+    const a = ((180 + (360 / agentMeshTools.length) * i) * Math.PI) / 180;
+    return {
+      id: meshAnchor(t.title),
+      kind: meshKinds[t.title] ?? ("lab" as const),
+      label: t.title,
+      anchor: meshAnchor(t.title),
+      x: MESH_HUB[0] + 7.6 * Math.cos(a),
+      z: MESH_HUB[1] + 6.4 * Math.sin(a)
+    };
+  }),
 
   ...careerOldestFirst.map((job, i) => {
     const [x, z] = vertex(towerAngles[i]);
@@ -140,6 +172,9 @@ const outward = (id: string, distance: number): CameraShot => {
 };
 
 export function sceneFor(key: string): SceneState {
+  if (key.startsWith("mesh-")) {
+    return { shot: { target: pos(key), distance: 40, azimuth: 0.35, elevation: 0.9 }, highlight: [key], label: true };
+  }
   if (key.startsWith("agent-")) {
     return { shot: outward(key, 46), highlight: [key], label: true };
   }
@@ -149,6 +184,8 @@ export function sceneFor(key: string): SceneState {
     return { shot: outward(key, big ? 48 : 40), highlight: [key], label: true };
   }
   switch (key) {
+    case "agentmesh":
+      return { shot: { target: [0, 2, 18], distance: 52, azimuth: 0.3, elevation: 0.78 }, highlight: buildings.filter((b) => b.id.startsWith("mesh-")).map((b) => b.id), label: true };
     case "agents":
       return { shot: { target: [16, 2, 1], distance: 52, azimuth: 0.85, elevation: 0.62 }, highlight: byKind("market").concat(byKind("archive"), byKind("forge")), label: true };
     case "projects":

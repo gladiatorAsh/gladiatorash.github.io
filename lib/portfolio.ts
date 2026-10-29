@@ -15,7 +15,7 @@ import {
 
 export const profile = {
   name: "Ashutosh Singh",
-  title: "AI Engineer",
+  title: "Applied AI Engineer and Team Lead",
   location: "Santa Clara, CA",
   email: "ashutoshsingh1989@gmail.com",
   phone: "669-261-2485",
@@ -23,11 +23,12 @@ export const profile = {
   github: "https://github.com/gladiatorAsh",
   linkedin: "https://linkedin.com/in/ashutoshysingh",
   summary:
-    "AI Engineer and Team Lead with 15+ years designing enterprise-scale AI platforms, RAG architectures, document intelligence systems, and distributed cloud applications."
+    "Azure AI Engineer and Team Lead with 15+ years building enterprise-scale platforms on Azure. Specialized in RAG architectures, agentic workflows and LLM-powered systems, delivering production-grade copilots and document intelligence pipelines."
 };
 
 export const navItems = [
   { label: "Intro", href: "#home" },
+  { label: "AgentMesh", href: "#agentmesh" },
   { label: "New agents", href: "#agents" },
   { label: "Engineered by hand", href: "#projects" },
   { label: "Experience", href: "#resume" },
@@ -54,7 +55,10 @@ export const timeline = [
       "Led current Microsoft and Applied Materials contract programs spanning Azure AI, RAG, copilots, analytics, and enterprise platform modernization.",
       "Designed a multi-agent document intelligence system processing 70K+ documents per month across OCR, multilingual classification, translation, extraction, summarization, and validation.",
       "Led RAG and copilot delivery for CRM, Teams, Office, and React experiences serving 2K+ active users.",
-      "Managed engineering teams of up to 20 people, running design reviews, unblocking delivery, and mentoring engineers on React, .NET, Azure, and AI patterns.",
+      "Engineered agentic workflows orchestrating multi-step LLM reasoning chains, cutting manual effort and turnaround time at scale.",
+      "Managed engineering teams of up to 20 people across the San Francisco Bay Area office and an offshore team in India, running design reviews, unblocking delivery, and mentoring engineers on React, .NET, Azure, and AI patterns.",
+      "Led initiatives across the company to reduce technical debt, improve application performance, and introduce coding standards, secure coding practices and a code review process.",
+      "Developed scalable React and .NET applications, Teams extensions and copilots, growing adoption from 30 to 5,000+ users.",
       "Owned Azure infrastructure across App Services, Functions, Logic Apps, Key Vault, Redis, Blob Storage, Azure AI Search, Azure AI Foundry, and CI/CD pipelines."
     ],
     stack: ["OpenAI", "Azure AI Search", "Azure AI Foundry", ".NET", "React", "Python", "Logic Apps", "Redis"],
@@ -127,6 +131,125 @@ export type AgenticProject = {
   proof: { label: string; value: string }[];
   links: { label: string; href: string }[];
 };
+
+/**
+ * AgentMesh: the newest work. Agents for a laptop hardware engineering team, reached through AISD,
+ * a portal that runs inside Creo Parametric's embedded browser. Newest first.
+ */
+export const agentMesh = {
+  title: "AgentMesh",
+  headline: "An agent platform that works inside the CAD tools mechanical engineers already use",
+  period: "2026",
+  where: "Work, with my team",
+  plain: [
+    "Mechanical engineers spend their day in CAD and product-data tools, not in chat windows. AgentMesh brings AI to them: engineers open AISD, a portal my team built that runs inside Creo Parametric's own browser panel, and ask for help with the design in front of them.",
+    "AgentMesh sends each request to the right specialist agent, from CAD changes and enclosure experiments to battery comparisons, and that agent does the work in the engineer's own tools."
+  ],
+  technical: [
+    "AISD's agents run in Azure. MCP servers run on the engineer's desktop beside the CAD session (a Creo Parametric MCP, plus Fusion MCP tools), so an agent in the cloud can read and drive the model locally.",
+    "Specialist agents and tools share the platform: the Creo CAD assistant, the Enclosure Agent, analysis tools, C-bucket tools and battery tools, alongside other agents in the wider system such as VASIM for virtual simulation."
+  ],
+  flow: ["Engineer in Creo", "AISD portal", "AgentMesh router", "Specialist agent (Azure)", "Desktop MCP", "CAD / Windchill"],
+  stack: ["Azure", "MCP", "Creo Parametric", "Windchill REST API", "Fusion", "GitHub Copilot", "Python"]
+};
+
+export const agentMeshTools: AgenticProject[] = [
+  {
+    title: "Creo CAD assistant",
+    headline: "Ask for a CAD change in plain language, inside Creo",
+    period: "2026",
+    where: "AgentMesh",
+    plain: [
+      "Engineers describe what they want done to the model and the assistant carries it out in the open Creo session, without leaving the CAD tool.",
+      "Next, it will check each requested change and suggest better options before applying it."
+    ],
+    technical: [
+      "The AISD agent runs in Azure and calls a Creo Parametric MCP server on the engineer's desktop, which performs the operations in the live session.",
+      "I'm extending an MCP that an earlier developer started, prioritizing missing capabilities, then adding validation and design suggestions to the CAD interaction."
+    ],
+    flow: ["Request in AISD", "Agent plans steps", "Creo MCP", "Model updated", "Validate + suggest"],
+    stack: ["Creo Parametric", "MCP", "Azure", "AISD"],
+    proof: [{ label: "Runs", value: "Inside Creo" }],
+    links: []
+  },
+  {
+    title: "Enclosure Agent",
+    headline: "Explore an enclosure design before anyone builds it",
+    period: "2026",
+    where: "AgentMesh",
+    plain: [
+      "Engineers try different enclosure parameters and the agent runs the experiments for them, predicting how stiff each design will be.",
+      "It plots material weight against stiffness, so the best trade-offs are visible at a glance."
+    ],
+    technical: [
+      "The agent runs parameter sweeps on a pre-trained Python surrogate model (deployed as-is), returning predicted stiffness for each variant.",
+      "Results come back as a weight-versus-stiffness Pareto chart."
+    ],
+    flow: ["Design parameters", "Parameter sweep", "Surrogate model", "Stiffness", "Pareto chart"],
+    stack: ["Python", "Surrogate model", "AgentMesh"],
+    proof: [{ label: "Output", value: "Pareto front" }],
+    links: []
+  },
+  {
+    title: "Battery tools",
+    headline: "Compare laptop battery designs across versions",
+    period: "2026",
+    where: "AgentMesh",
+    plain: [
+      "Battery decisions depend on how today's design compares with earlier ones. The battery tools pull those versions together so engineers can compare them while they design.",
+      "It is the platform's current focus, aimed at helping engineers make design decisions."
+    ],
+    technical: [
+      "AISD queries the Windchill REST API for battery design data across versions, while Creo talks to Windchill directly for CAD operations."
+    ],
+    flow: ["Question in AISD", "Windchill REST API", "Battery versions", "Comparison"],
+    stack: ["Windchill", "REST API", "Creo Parametric", "AISD"],
+    proof: [{ label: "Data", value: "Windchill" }],
+    links: []
+  },
+  {
+    title: "C-bucket tools",
+    headline: "Laptop C-cover calculations, one prompt away",
+    period: "2026",
+    where: "AgentMesh",
+    plain: [
+      "The C-bucket is the top of the laptop base: the keyboard and palm-rest enclosure. Engineers can run its calculations straight from GitHub Copilot instead of hunting for a separate desktop tool.",
+      "Next, it becomes a web app like the other agents, with faster calculations."
+    ],
+    technical: [
+      "A GitHub Copilot MCP integration launches a local UI tool and runs the C-bucket calculation on the machine's CPU or GPU.",
+      "Planned: move it from a desktop app to a web app and cut the time each calculation takes."
+    ],
+    flow: ["Copilot", "MCP tool", "Local UI", "CPU/GPU calculation"],
+    stack: ["GitHub Copilot", "MCP", "Desktop app"],
+    proof: [{ label: "Runs", value: "From Copilot" }],
+    links: []
+  },
+  {
+    title: "Analysis tools",
+    headline: "Engineering analysis the agents can call",
+    period: "2026",
+    where: "AgentMesh",
+    plain: ["Analysis tools that the platform's agents call, so their answers rest on calculations rather than guesses."],
+    technical: ["Exposed to AgentMesh agents as tools alongside the CAD and product-data integrations."],
+    flow: ["Agent", "Analysis tool", "Result"],
+    stack: ["AgentMesh", "MCP"],
+    proof: [],
+    links: []
+  },
+  {
+    title: "Fusion MCP tools",
+    headline: "The same agents, working in Fusion",
+    period: "2026",
+    where: "AgentMesh",
+    plain: ["MCP tools that let AgentMesh agents work with Fusion as well as Creo, so the platform isn't tied to one CAD tool."],
+    technical: ["MCP servers that expose Fusion operations to the platform's agents, in the same pattern as the Creo Parametric MCP."],
+    flow: ["Agent", "Fusion MCP", "Fusion"],
+    stack: ["Fusion", "MCP", "AgentMesh"],
+    proof: [],
+    links: []
+  }
+];
 
 /** Personal agent systems, built with AI coding agents and running on free infrastructure. */
 export const agenticProjects: AgenticProject[] = [
@@ -557,6 +680,7 @@ export const testimonials = [
 ];
 
 export const skillGroups = {
+  Agents: ["Multi-agent orchestration", "Model Context Protocol (MCP) servers", "Tool calling", "GitHub Copilot extensions", "CAD automation (Creo, Fusion)", "LLM evaluation"],
   AI: ["Azure OpenAI", "RAG", "LLM Pipelines", "Prompt Engineering", "Agentic Workflows", "Document Intelligence"],
   Cloud: ["Azure App Services", "Azure Functions", "Azure AI Search", "Key Vault", "Blob Storage", "AWS ECS", "RDS"],
   Backend: ["C#", ".NET Core", "ASP.NET MVC", "Python", "Node.js", "REST APIs", "SQL"],
@@ -566,13 +690,16 @@ export const skillGroups = {
 };
 
 export const certifications = [
+  "GitHub Copilot (Microsoft, 2026)",
   "Microsoft Azure AI Engineer Associate",
   "Microsoft Azure Developer Associate",
+  "MCSD: Microsoft Certified Solutions Developer",
+  "MCSA: Web Applications (2016)",
   "Microsoft Azure Fundamentals",
   "Microsoft Power Platform Fundamentals"
 ];
 
 export const education = [
-  "M.S. Software Engineering, San Jose State University, CA",
-  "B.E. Computer Engineering, University of Mumbai, India"
+  "M.S. Software Engineering (cloud computing and enterprise software), San José State University, 2016–2018. GPA 3.74, Phi Kappa Phi, ACM",
+  "B.E. Computer Engineering, Don Bosco Institute of Technology, University of Mumbai, 2007–2011. IBM technical contest prize winner"
 ];
