@@ -212,6 +212,65 @@ export function mount(host: HTMLElement, labelLayer: HTMLElement, opts: Options)
         top = hh + 2.6;
         break;
       }
+      case "hub": {
+        part(group, parts, cyl(3.2, 1.2, 12), 0, 0.6, 0);
+        part(group, parts, cyl(1.2, 7.4, 8), 0, 4.9, 0);
+        part(group, parts, cyl(3.4, 0.4, 12), 0, 5.4, 0);
+        part(group, parts, box(2.2, 2.2, 2.2), 0, 9.7, 0, Math.PI / 4);
+        top = 11.6;
+        break;
+      }
+      case "cad": {
+        part(group, parts, box(4.2, 1.1, 4.2), 0, 0.55, 0);
+        part(group, parts, box(3.6, 1.6, 2.8), 0, 1.9, 0);
+        part(group, parts, box(1.4, 2.2, 2.8), -1.1, 3.8, 0);
+        part(group, parts, cyl(0.5, 1.7, 10), 1, 2.75, 0, 0, Math.PI / 2);
+        top = 6.4;
+        break;
+      }
+      case "enclosure": {
+        part(group, parts, box(4.6, 1.1, 3.4), 0, 0.55, 0);
+        part(group, parts, box(5.2, 0.3, 3.8), 0, 1.25, 0);
+        part(group, parts, box(5.2, 1.4, 0.3), 0, 2.1, -1.75);
+        part(group, parts, box(5.2, 1.4, 0.3), 0, 2.1, 1.75);
+        part(group, parts, box(0.3, 1.4, 3.2), -2.45, 2.1, 0);
+        part(group, parts, box(0.3, 1.4, 3.2), 2.45, 2.1, 0);
+        top = 4.2;
+        break;
+      }
+      case "battery": {
+        part(group, parts, box(5.4, 0.7, 3.4), 0, 0.35, 0);
+        for (const cx of [-1.75, 0, 1.75]) {
+          part(group, parts, cyl(0.75, 3.2, 12), cx, 2.3, 0);
+          part(group, parts, cyl(0.3, 0.4, 8), cx, 4.1, 0);
+        }
+        top = 5.6;
+        break;
+      }
+      case "slab": {
+        part(group, parts, box(4, 1.3, 2.8), 0, 0.65, 0);
+        part(group, parts, box(5.4, 0.7, 3.8), 0, 1.65, 0);
+        part(group, parts, box(4, 0.16, 1.7), 0, 2.08, -0.6);
+        part(group, parts, box(1.5, 0.12, 0.9), 0, 2.06, 1.2);
+        top = 3.8;
+        break;
+      }
+      case "lab": {
+        part(group, parts, box(4, 2.6, 4), 0, 1.3, 0);
+        part(group, parts, new THREE.SphereGeometry(1.8, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), 0, 2.6, 0);
+        top = 5.8;
+        break;
+      }
+      case "gear": {
+        part(group, parts, cyl(0.7, 2.6, 8), 0, 1.3, 0);
+        part(group, parts, cyl(2.2, 1.2, 12), 0, 3.2, 0);
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          part(group, parts, box(0.8, 1.2, 0.8), Math.cos(a) * 2.5, 3.2, Math.sin(a) * 2.5, -a);
+        }
+        top = 5.6;
+        break;
+      }
       case "stone": {
         const sh = 3.4 * h;
         part(group, parts, box(0.95, sh, 0.95), 0, sh / 2, 0);
@@ -257,9 +316,12 @@ export function mount(host: HTMLElement, labelLayer: HTMLElement, opts: Options)
 
   const roadGeom = (() => {
     const pts: number[] = [];
+    const hub = entries.find((e) => e.b.kind === "hub");
     for (const e of entries) {
       if (e.b.kind === "keep" || e.b.kind === "tower" || e.b.kind === "stone") continue;
-      pts.push(0, 0.05, 0, e.b.x, 0.05, e.b.z);
+      // AgentMesh agents connect to their hub, and the hub to the keep.
+      const from = hub && e.b.id.startsWith("mesh-") && e !== hub ? [hub.b.x, hub.b.z] : [0, 0];
+      pts.push(from[0], 0.05, from[1], e.b.x, 0.05, e.b.z);
     }
     // inner ring road
     const r = 27;

@@ -75,6 +75,7 @@ export function setReadingMode(mode: ReadingMode) {
     /* storage blocked: mode still applies for this visit */
   }
   window.dispatchEvent(new CustomEvent("portfolio:reading", { detail: mode }));
+  toast(mode === "technical" ? "Technical version: architecture, flows and stack" : "Plain English version: what it does and why it matters");
 }
 
 /** Inline, render-blocking on purpose: sets the theme before first paint so there is no flash. */

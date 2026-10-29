@@ -26,7 +26,7 @@ export function Toaster() {
     <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-6 z-[80] flex justify-center px-4">
       <div
         className={cn(
-          "toast flex items-center gap-2 rounded-full border border-white/10 bg-card px-4 py-2 text-sm text-white shadow-[var(--card-shadow)]",
+          "toast flex items-center gap-2 border border-ink bg-paper px-4 py-2 font-mono text-[0.72rem] text-ink transition duration-200",
           visible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
         )}
       >

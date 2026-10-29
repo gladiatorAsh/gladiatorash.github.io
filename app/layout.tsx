@@ -24,16 +24,16 @@ const martian = localFont({
 
 
 export const metadata: Metadata = {
-  title: "Ashutosh Singh | AI Engineer",
+  title: "Ashutosh Singh | Applied AI Engineer: Agentic AI, RAG, Azure OpenAI",
   description:
-    "Ashutosh Singh, AI Engineer building enterprise AI systems with Azure OpenAI, RAG, multi-agent workflows, .NET, React, and Python.",
+    "Ashutosh Singh, Applied AI Engineer and Team Lead in the San Francisco Bay Area. 15+ years building enterprise platforms: agentic AI and multi-agent systems, MCP tools for CAD, RAG on Azure OpenAI and Azure AI Search, .NET, React and Python.",
   metadataBase: new URL("https://www.ashutoshysingh.com"),
   // /resume, /projects, etc. render the same page; point search engines at one URL.
   alternates: { canonical: "/" },
   authors: [{ name: profile.name, url: "https://www.ashutoshysingh.com" }],
   openGraph: {
-    title: "Ashutosh Singh | AI Engineer",
-    description: "Enterprise AI systems, OpenAI, RAG, document intelligence, and agentic workflows.",
+    title: "Ashutosh Singh | Applied AI Engineer: Agentic AI, RAG, Azure OpenAI",
+    description: "Agentic AI for engineers, RAG copilots and document intelligence on Azure. 15+ years, team lead.",
     url: "https://www.ashutoshysingh.com",
     siteName: "Ashutosh Singh",
     type: "website",
@@ -41,8 +41,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Ashutosh Singh | AI Engineer",
-    description: "Enterprise AI systems, OpenAI, RAG, document intelligence, and agentic workflows.",
+    title: "Ashutosh Singh | Applied AI Engineer: Agentic AI, RAG, Azure OpenAI",
+    description: "Agentic AI for engineers, RAG copilots and document intelligence on Azure. 15+ years, team lead.",
     images: ["/og.png"]
   }
 };
@@ -61,7 +61,7 @@ const personJsonLd = {
   sameAs: [profile.github, profile.linkedin],
   address: { "@type": "PostalAddress", addressLocality: "Santa Clara", addressRegion: "CA", addressCountry: "US" },
   alumniOf: "San Jose State University",
-  knowsAbout: ["Azure OpenAI", "Retrieval-augmented generation", "Multi-agent systems", "Azure AI Search", ".NET", "Python", "React"]
+  knowsAbout: ["Agentic AI", "Multi-agent systems", "Model Context Protocol", "Retrieval-augmented generation", "Azure OpenAI", "Azure AI Foundry", "Azure AI Search", "Document intelligence", "CAD automation", ".NET", "C#", "Python", "React", "TypeScript"]
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
