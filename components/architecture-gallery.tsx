@@ -22,15 +22,15 @@ export function ArchitectureGallery() {
               setSelectedId(item.id);
               setNodeIndex(0);
             }}
-            className={`key-btn -mb-px ${i ? "-ml-px" : ""}`}
+            className="key-btn -mb-px -mr-px"
           >
             {item.title}
           </button>
         ))}
       </div>
 
-      <div className="mt-8 grid border border-rule lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-        <div className="border-b border-rule p-5 sm:p-7 lg:border-b-0 lg:border-r">
+      <div className="mt-8 grid border border-rule">
+        <div className="border-b border-rule p-5 sm:p-7">
           <p className="measure m-0 text-graphite">{selected.summary}</p>
           <ol key={selected.id} className="mt-7 list-none p-0" aria-label={`${selected.title} stages`}>
             {selected.nodes.map((item, index) => {

@@ -28,9 +28,9 @@ export const profile = {
 
 export const navItems = [
   { label: "Intro", href: "#home" },
-  { label: "Agentic work", href: "#agents" },
+  { label: "New agents", href: "#agents" },
+  { label: "Engineered by hand", href: "#projects" },
   { label: "Experience", href: "#resume" },
-  { label: "Earlier projects", href: "#projects" },
   { label: "Architecture", href: "#architecture" },
   { label: "Testimonials", href: "#testimonials" },
   { label: "Skills", href: "#skills" },
@@ -128,50 +128,8 @@ export type AgenticProject = {
   links: { label: string; href: string }[];
 };
 
-/** Agent systems: production work first, then personal agents that run on free infrastructure. */
+/** Personal agent systems, built with AI coding agents and running on free infrastructure. */
 export const agenticProjects: AgenticProject[] = [
-  {
-    title: "Agent Assist",
-    headline: "A team of agents that reads 70,000 documents a month",
-    period: "2025 – present",
-    where: "Enterprise, production",
-    plain: [
-      "Support agents were drowning in scanned forms, emails and attachments in many languages. Agent Assist reads each document first, works out what it is, pulls out what matters and writes a short summary.",
-      "Anything the system is unsure about goes to a person, so automation never makes a silent mistake."
-    ],
-    technical: [
-      "A multi-agent Azure AI Foundry workflow: OCR and language detection, a classifier that routes by document type, specialized extraction and summarization agents, and a validator that checks every output against a schema before it reaches CRM.",
-      "Confidence thresholds route work to cheaper models first and to human review queues when they are not met. Durable Functions keep long runs resumable; telemetry tracks cost and p95 latency per step."
-    ],
-    flow: ["Ingest", "OCR + language", "Classify", "Extract agents", "Validate", "Human review", "CRM"],
-    stack: ["Azure AI Foundry", "Azure OpenAI", "Document Intelligence", "Durable Functions", "Logic Apps", "Cosmos DB", "Python", ".NET 8"],
-    proof: [
-      { label: "Documents per month", value: "70K+" },
-      { label: "Low-confidence results", value: "Human review" }
-    ],
-    links: []
-  },
-  {
-    title: "Crystal",
-    headline: "Grounded answers inside Teams, CRM and Office",
-    period: "2024 – present",
-    where: "Enterprise, production",
-    plain: [
-      "People needed answers from company knowledge without leaving the apps they work in. Crystal finds the right passages, answers with citations, and only shows content each person is allowed to see.",
-      "Every answer can be rated, and that feedback is used to improve retrieval."
-    ],
-    technical: [
-      "Hybrid retrieval on Azure AI Search (vector + BM25) with semantic and cross-encoder reranking, permission-aware filtering, and tool calling with structured outputs.",
-      "Retrieval traces, citations and user feedback land in one diagnostics view, so quality work is measured rather than guessed."
-    ],
-    flow: ["Ingest + enrich", "Index", "Hybrid search", "Rerank", "Grounded answer", "Feedback"],
-    stack: ["Azure OpenAI", "Azure AI Search", "Azure AI Foundry", "Python", "React", "Teams", "Office"],
-    proof: [
-      { label: "Active users", value: "2K+" },
-      { label: "Surfaces", value: "Teams, CRM, Office" }
-    ],
-    links: []
-  },
   {
     title: "Deals Galore",
     headline: "A shopping agent that tells me when a deal is real",
@@ -244,6 +202,30 @@ export const agenticProjects: AgenticProject[] = [
 ];
 
 export const projects = [
+  {
+    title: "Agent Assist - Document Intelligence Platform",
+    period: "2025 - Present",
+    problem: "High-volume enterprise documents needed multilingual OCR, classification, extraction, validation, and summarization at scale without overwhelming human agents.",
+    solution: "Built a multi-agent Azure AI Foundry workflow that processes 70K+ documents per month through routing, validation, and review checkpoints.",
+    architecture: "Document ingress, OCR, language detection, classifier, extraction agents, human review queues, and analytics feedback loops.",
+    stack: ["Azure AI Foundry", "Document Intelligence", "Azure OpenAI", "Python", "Logic Apps", "Functions", "Dynamics CRM"],
+    challenges: ["Latency control across multi-step pipelines", "Cost-aware OCR and LLM usage", "Reliable validation for imperfect documents"],
+    lessons: ["Treat evaluation as product infrastructure", "Use routing and confidence thresholds before invoking expensive models", "Design agent workflows around clear validation contracts"],
+    github: null,
+    screenshots: ["Pipeline view", "Validation console", "Agent trace"]
+  },
+  {
+    title: "Crystal RAG + Copilot Platform",
+    period: "2024 - Present",
+    problem: "Knowledge workers needed grounded answers across Teams, CRM, and Office apps with enterprise controls and low-latency retrieval for 2K+ active users.",
+    solution: "Delivered a secure Azure RAG platform with hybrid search, grounded citations, and feedback loops for CRM, Teams, and Office experiences.",
+    architecture: "Content ingestion, enrichment, Azure AI Search, re-ranking, prompt orchestration, secure API tier, and Teams/Office frontends.",
+    stack: ["Azure OpenAI", "Azure AI Search", "Azure AI Foundry", "Python", "Teams", "Office", "React"],
+    challenges: ["Permission-aware retrieval", "Prompt drift", "Grounded citation quality", "Feedback visibility across multiple data sources"],
+    lessons: ["Retrieval quality beats prompt cleverness", "Caching should be scoped by identity and freshness requirements", "Analytics need to be part of the copilot product loop"],
+    github: null,
+    screenshots: ["Copilot response", "Search diagnostics", "Feedback dashboard"]
+  },
   {
     title: "EPG Taiwan Plant Enablement",
     period: "Applied Materials",

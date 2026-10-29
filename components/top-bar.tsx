@@ -86,7 +86,7 @@ export function TopBar() {
   return (
     <header className="fixed inset-x-0 top-0 z-40 border-b border-rule bg-paper/92 backdrop-blur-md">
       <div className="scroll-progress absolute inset-x-0 bottom-[-1px] h-px origin-left bg-ink" aria-hidden="true" />
-      <div className="frame flex h-14 items-center gap-4">
+      <div className="flex h-14 items-center gap-4 px-4 md:px-10">
         <a href="#home" className="shrink-0 text-[0.95rem] font-medium tracking-[-0.01em]">
           <span className="sm:hidden">A. Singh</span>
           <span className="hidden sm:inline">{profile.name}</span>
