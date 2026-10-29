@@ -1,338 +1,326 @@
-import { Fragment } from "react";
-import Link from "next/link";
-import { ArrowUpRight, Download, Github, Linkedin, Mail, MapPin, Quote, Terminal } from "lucide-react";
+import { ArrowUpRight, Plus } from "lucide-react";
 import { ArchitectureGallery } from "@/components/architecture-gallery";
 import { CareerTimeline } from "@/components/career-timeline";
-import { PaletteTrigger } from "@/components/palette-trigger";
 import { CopyEmailButton } from "@/components/copy-email-button";
-import { MobileNav, SidebarNav } from "@/components/section-nav";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Reveal } from "@/components/reveal";
-import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SystemMap } from "@/components/system-map";
+import { ReadingToggle, TopBar } from "@/components/top-bar";
 import {
+  agenticProjects,
   certifications,
   education,
-  metrics,
+  navItems,
   profile,
   projects,
   skillGroups,
-  testimonials,
-  technicalSections
+  testimonials
 } from "@/lib/portfolio";
-import { cn } from "@/lib/utils";
+
+const total = navItems.length;
 
 export default function Home() {
   return (
-    <main>
-      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[21rem] flex-col justify-between border-r border-white/10 bg-background/72 px-10 py-10 backdrop-blur-xl lg:flex">
-        <div>
-          <Link href="#home" className="focus-ring inline-block rounded-md">
-            <p className="text-2xl font-bold tracking-tight text-white">{profile.name}</p>
-            <p className="mt-2 text-sm text-azure-light">{profile.title}</p>
-          </Link>
-          <div className="mt-10">
-            <PaletteTrigger />
-          </div>
-          <SidebarNav />
-        </div>
-        <div className="space-y-5">
-          <p className="max-w-56 text-sm leading-6 text-slate-400">
-            Enterprise AI systems, retrieval architecture, and full-stack delivery for production teams.
+    <>
+      <TopBar />
+      <main id="main">
+        <Hero />
+
+        <Chapter id="agents" title="Agents I've built">
+          <p className="measure text-graphite">
+            Two run in production for enterprise teams. Three are my own, built on free infrastructure and running every day.
+            Switch between <em className="not-italic text-ink">plain English</em> and <em className="not-italic text-ink">technical</em> with the
+            buttons at the top, or keys 1 and 2.
           </p>
-          <div className="flex items-center justify-between">
-            <Socials />
-            <ThemeToggle />
-          </div>
-        </div>
-      </aside>
-
-      <header className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-background/90 backdrop-blur-xl lg:hidden">
-        <div className="flex items-center gap-3 pl-4 pr-2 pt-2">
-          <a href="#home" className="font-semibold tracking-tight text-white">{profile.name}</a>
-          <span className="flex-1 text-xs text-slate-400">{profile.title}</span>
-          <PaletteTrigger compact />
-          <ThemeToggle />
-        </div>
-        <MobileNav />
-      </header>
-
-      <section id="home" className="section-shell flex items-center">
-        <div className="mx-auto w-full max-w-6xl">
-          <div className="hero-enter">
-            <p className="font-mono text-sm uppercase tracking-[0.28em] text-azure-light">AI Engineer</p>
-            <h1 className="mt-5 max-w-5xl text-5xl font-bold leading-[0.98] tracking-[-0.035em] text-white sm:text-6xl lg:text-8xl">
-              {profile.name}
-            </h1>
-            <p className="mt-6 max-w-3xl text-xl leading-9 text-slate-300">
-              Building enterprise AI systems using OpenAI, RAG, .NET, React and Python.
-            </p>
-            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-400">{profile.summary}</p>
-            <div className="mt-9 flex flex-wrap gap-3">
-              <a className={cn(buttonVariants({ variant: "default" }))} href="/assets/files/Resume.pdf" download="Ashutosh-Singh-Resume.pdf">
-                <Download className="h-4 w-4" />
-                Resume
-              </a>
-              <a className={cn(buttonVariants({ variant: "secondary" }))} href={profile.github} target="_blank" rel="noreferrer">
-                <Github className="h-4 w-4" />
-                GitHub
-              </a>
-              <a className={cn(buttonVariants({ variant: "secondary" }))} href="#projects">
-                <Terminal className="h-4 w-4" />
-                Projects
-              </a>
-            </div>
-          </div>
-          <div className="dim-group mt-16 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {metrics.map((metric) => (
-              <Card key={metric.label} className="p-5 transition hover:-translate-y-1 hover:border-azure/45">
-                <p className="text-4xl font-semibold tracking-tight text-white">{metric.value}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-400">{metric.label}</p>
-              </Card>
+          <div className="mt-12">
+            {agenticProjects.map((project, i) => (
+              <AgentProject key={project.title} project={project} index={i} />
             ))}
           </div>
-        </div>
-      </section>
+        </Chapter>
 
-      <Section id="resume" eyebrow="Career Timeline" title="Production AI leadership across cloud, applications, and enterprise workflows.">
-        <CareerTimeline />
-      </Section>
+        <Chapter id="resume" title="Where I've worked">
+          <CareerTimeline />
+        </Chapter>
 
-      <Section id="projects" eyebrow="Projects" title="Case studies built around real enterprise problems.">
-        <div className="dim-group grid gap-5">
-          {projects.map((project, index) => (
-            <Fragment key={project.title}>
-              <Card className="group overflow-hidden transition hover:-translate-y-1 hover:border-azure/45">
-                <div className="grid gap-0 xl:grid-cols-[0.9fr_1.1fr]">
-                  <CardHeader className="border-b border-white/10 xl:border-b-0 xl:border-r">
-                    <p className="font-mono text-xs uppercase tracking-[0.18em] text-azure-light">{project.period}</p>
-                    <CardTitle className="text-2xl">{project.title}</CardTitle>
-                    <p className="text-sm leading-6 text-slate-400">{project.problem}</p>
-                    {project.github ? (
-                      <a className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-azure-light" href={project.github} target="_blank" rel="noreferrer">
-                        GitHub <ArrowUpRight className="h-4 w-4" />
-                      </a>
-                    ) : null}
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <CaseBlock label="Solution" value={project.solution} />
-                      <CaseBlock label="Architecture" value={project.architecture} />
-                      <CaseList label="Challenges" values={project.challenges} />
-                      <CaseList label="Lessons Learned" values={project.lessons} />
-                    </div>
-                    <div className="mt-5 flex flex-wrap gap-2">
-                      {project.stack.map((tech) => (
-                        <span key={tech} className="rounded-md bg-white/5 px-2.5 py-1 font-mono text-xs text-slate-300">
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                      {project.screenshots.map((shot) => (
-                        <div key={shot} className="flex aspect-[16/9] items-center justify-center rounded-md border border-white/10 bg-background/70 text-center font-mono text-xs text-slate-400">
-                          {shot}
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </div>
-              </Card>
-            </Fragment>
-          ))}
-        </div>
-      </Section>
+        <Chapter id="projects" title="Earlier projects">
+          <p className="measure text-graphite">Client systems from before the agent work, newest first. Open a row for the details.</p>
+          <ProjectIndex />
+        </Chapter>
 
-      <Section id="architecture" eyebrow="Architecture Gallery" title="Clickable systems with the tradeoffs exposed.">
-        <ArchitectureGallery />
-      </Section>
+        <Chapter id="architecture" title="Systems, with the tradeoffs shown">
+          <p className="measure mb-10 text-graphite">
+            Pick a system, then a stage, to see why each part was chosen, what it costs and how it is secured.
+          </p>
+          <ArchitectureGallery />
+        </Chapter>
 
-      <Section id="testimonials" eyebrow="Testimonials" title="Colleagues and leaders on ownership, delivery, and technical judgment.">
-        <div className="dim-group grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {testimonials.map((testimonial, index) => (
-            <Fragment key={testimonial.name}>
-              <Card className="flex h-full flex-col p-5 transition hover:-translate-y-1 hover:border-azure/45">
-                <Quote aria-hidden="true" className="h-5 w-5 text-azure-light" />
-                <p className="mt-5 flex-1 text-sm leading-7 text-slate-300">{testimonial.quote}</p>
-                <div className="mt-6 flex items-center gap-3 border-t border-white/10 pt-5">
-                  {testimonial.image ? (
-                    <img
-                      src={testimonial.image}
-                      alt=""
-                      width={48}
-                      height={48}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-12 w-12 rounded-full border border-white/10 object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-azure/30 bg-azure/10 font-semibold text-azure-light">
-                      {testimonial.name
-                        .split(" ")
-                        .map((part) => part[0])
-                        .join("")
-                        .slice(0, 2)}
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-semibold text-white">{testimonial.name}</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-400">{testimonial.title}</p>
-                  </div>
-                </div>
-              </Card>
-            </Fragment>
-          ))}
-        </div>
-      </Section>
+        <Chapter id="testimonials" title="What colleagues say">
+          <ul className="grid gap-x-12 md:grid-cols-2">
+            {testimonials.map((t) => (
+              <li key={t.name} className="border-t border-rule py-7">
+                <blockquote className="m-0">
+                  <p className="measure text-[1.02rem] leading-[1.65]">{t.quote}</p>
+                  <footer className="mt-4">
+                    <p className="font-medium">{t.name}</p>
+                    <p className="mono text-graphite">{t.title}</p>
+                  </footer>
+                </blockquote>
+              </li>
+            ))}
+          </ul>
+        </Chapter>
 
-      <Section id="technical" eyebrow="Technical Knowledge Base" title="Field notes for AI architecture, retrieval, agents, and performance.">
-        <div className="dim-group grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {technicalSections.map((section) => {
-            const Icon = section.icon;
-            return (
-              <Fragment key={section.title}>
-                <Card className="h-full p-5 transition hover:-translate-y-1 hover:border-azure/45">
-                  <Icon className="h-5 w-5 text-azure-light" />
-                  <h3 className="mt-5 text-lg font-semibold text-white">{section.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-400">{section.description}</p>
-                  <pre className="mt-5 overflow-hidden rounded-md border border-white/10 bg-background/82 p-3 font-mono text-xs leading-5 text-slate-400">
-{`type Note = {
-  diagrams: true
-  code: "supported"
-}`}
-                  </pre>
-                </Card>
-              </Fragment>
-            );
-          })}
-        </div>
-      </Section>
-
-      <Section id="skills" eyebrow="Skills" title="A senior toolkit for AI products that need to survive production.">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {Object.entries(skillGroups).map(([group, skills]) => (
-            <Card key={group} className="p-5">
-              <h3 className="text-lg font-semibold text-white">{group}</h3>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {skills.map((skill) => (
-                  <span key={skill} className="rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-sm text-slate-300">
-                    {skill}
-                  </span>
-                ))}
+        <Chapter id="skills" title="Tools I use">
+          <dl className="grid gap-x-12 md:grid-cols-2">
+            {Object.entries(skillGroups).map(([group, skills]) => (
+              <div key={group} className="grid grid-cols-[7rem_1fr] gap-4 border-t border-rule py-5">
+                <dt className="font-medium">{group}</dt>
+                <dd className="m-0 text-graphite">{skills.join(", ")}</dd>
               </div>
-            </Card>
-          ))}
-        </div>
-      </Section>
-
-      <Section id="certifications" eyebrow="Certifications" title="Microsoft-oriented cloud and AI credentials.">
-        <div className="grid gap-4 md:grid-cols-2">
-          {certifications.map((certification) => (
-            <Card key={certification} className="flex items-center justify-between p-5">
-              <span className="font-semibold text-white">{certification}</span>
-              <span className="rounded-md border border-azure/30 bg-azure/10 px-2 py-1 font-mono text-xs text-azure-light">Microsoft</span>
-            </Card>
-          ))}
-        </div>
-      </Section>
-
-      <Section id="contact" eyebrow="Contact" title="Let’s build practical AI systems with clean architecture and measurable outcomes.">
-        <Card className="p-6">
-          <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+            ))}
+          </dl>
+          <div className="mt-14 grid gap-12 md:grid-cols-2">
             <div>
-              <p className="text-lg leading-8 text-slate-300">
-                I’m based in {profile.location} and focused on enterprise AI, RAG, agentic workflows, Azure architecture, and full-stack delivery.
-              </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <a className={cn(buttonVariants({ variant: "default" }))} href={`mailto:${profile.email}`}>
-                  <Mail className="h-4 w-4" />
-                  Email
-                </a>
-                <CopyEmailButton email={profile.email} variant="button" />
-                <a className={cn(buttonVariants({ variant: "secondary" }))} href={profile.linkedin} target="_blank" rel="noreferrer">
-                  <Linkedin className="h-4 w-4" />
-                  LinkedIn
-                </a>
-              </div>
-              <div className="mt-6">
-                <CopyEmailButton email={profile.email} variant="inline" />
-              </div>
-            </div>
-            <div className="rounded-lg border border-white/10 bg-background/72 p-5">
-              <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-400">Education</p>
-              <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
-                {education.map((item) => (
-                  <li key={item}>{item}</li>
+              <h3 className="text-xl font-medium tracking-[-0.02em]">Certifications</h3>
+              <ul className="mt-4 space-y-2 text-graphite">
+                {certifications.map((c) => (
+                  <li key={c}>{c}</li>
                 ))}
               </ul>
-              <div className="mt-6 flex items-center gap-2 text-sm text-slate-400">
-                <MapPin className="h-4 w-4 text-azure-light" />
-                {profile.location}
-              </div>
+            </div>
+            <div>
+              <h3 className="text-xl font-medium tracking-[-0.02em]">Education</h3>
+              <ul className="mt-4 space-y-2 text-graphite">
+                {education.map((e) => (
+                  <li key={e}>{e}</li>
+                ))}
+              </ul>
             </div>
           </div>
-        </Card>
-      </Section>
+          <p className="mt-14 text-graphite">
+            Keeping up: I read new research through{" "}
+            <a className="link" href="/papers/">
+              Paper Desk
+            </a>
+            , the reading agent above.
+          </p>
+        </Chapter>
 
-      <footer className="border-t border-white/10 px-5 py-8 lg:pl-[25rem] lg:pr-16">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} {profile.name}. Built with Next.js, Azure-blue restraint, and production-minded taste.</p>
-          <Socials />
+        <Chapter id="contact" title="Let's build AI that holds up in production">
+          <p className="measure text-graphite">
+            I'm in {profile.location}, working on enterprise AI: retrieval, agent workflows, Azure architecture and the full-stack apps
+            around them. The quickest way to reach me is email.
+          </p>
+          <a
+            href={`mailto:${profile.email}`}
+            className="mt-8 inline-block break-all text-[clamp(1.4rem,4vw,2.6rem)] font-normal tracking-[-0.03em] underline decoration-rule decoration-1 underline-offset-[0.18em] hover:decoration-ink"
+          >
+            {profile.email}
+          </a>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <CopyEmailButton email={profile.email} variant="button" className="key-btn !h-auto !rounded-none !bg-transparent !shadow-none" />
+            <a className="key-btn" href={profile.linkedin} target="_blank" rel="noreferrer">
+              LinkedIn <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+            </a>
+            <a className="key-btn" href={profile.github} target="_blank" rel="noreferrer">
+              GitHub <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+            </a>
+            <a className="key-btn" href="/assets/files/Resume.pdf" download="Ashutosh-Singh-Resume.pdf">
+              Download resume
+            </a>
+          </div>
+        </Chapter>
+      </main>
+
+      <footer className="border-t border-rule">
+        <div className="frame flex flex-col gap-2 py-8 text-graphite sm:flex-row sm:justify-between">
+          <p className="mono">© {new Date().getFullYear()} {profile.name}</p>
+          <p className="mono">Static site, rebuilt daily with the latest papers</p>
         </div>
       </footer>
-    </main>
+    </>
   );
 }
 
-function Section({ id, eyebrow, title, children }: { id: string; eyebrow: string; title: string; children: React.ReactNode }) {
+function Hero() {
   return (
-    <section id={id} className="section-shell">
-      <div className="mx-auto w-full max-w-6xl">
-        <Reveal className="mb-10">
-          <p className="font-mono text-sm uppercase tracking-[0.24em] text-azure-light">{eyebrow}</p>
-          <h2 className="mt-4 max-w-4xl text-3xl font-semibold leading-[1.1] tracking-[-0.025em] text-white sm:text-[2.6rem]">{title}</h2>
-        </Reveal>
+    <section id="home" className="pb-16 pt-24 md:pt-28">
+      <div className="frame">
+        <div className="border-t border-ink pt-3">
+          <h1 className="wordmark m-0">
+            Ashutosh
+            <br />
+            Singh
+          </h1>
+          <p className="mono mt-4 text-graphite">Applied AI engineer. Retrieval, agents and the platforms around them.</p>
+        </div>
+
+        <div className="mt-12 grid gap-12 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-16">
+          <div className="flex flex-col gap-8">
+            <p className="text-[1.08rem] leading-[1.6]">
+              I design agent systems that do real work: read documents, find the right evidence, call tools and know when to ask a person.
+              Fifteen years of shipping software, the last several building AI for enterprise teams on Azure.
+            </p>
+            <dl className="grid grid-cols-2 gap-px border border-rule bg-rule">
+              {[
+                { v: "70K+", l: "documents a month through one agent pipeline" },
+                { v: "2K+", l: "people using a RAG copilot daily" },
+                { v: "20", l: "engineers led across delivery teams" },
+                { v: "15+", l: "years building cloud software" }
+              ].map((m) => (
+                <div key={m.l} className="flex flex-col-reverse justify-end bg-paper p-3">
+                  <dt className="mono mt-1 text-graphite">{m.l}</dt>
+                  <dd className="m-0 text-2xl tracking-[-0.03em]">{m.v}</dd>
+                </div>
+              ))}
+            </dl>
+            <div>
+              <p className="mono mb-2 text-graphite">Read this site in</p>
+              <ReadingToggle />
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <a className="key-btn" href="#agents">
+                See the agents
+              </a>
+              <a className="key-btn" href="/assets/files/Resume.pdf" download="Ashutosh-Singh-Resume.pdf">
+                Resume
+              </a>
+            </div>
+          </div>
+          <SystemMap />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Chapter({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  const n = navItems.findIndex((item) => item.href === `#${id}`) + 1;
+  return (
+    <section id={id} className="chapter" aria-labelledby={`${id}-title`}>
+      <div className="frame">
+        <p className="mono text-graphite">
+          {String(n).padStart(2, "0")} / {String(total).padStart(2, "0")}
+        </p>
+        <h2 id={`${id}-title`} className="chapter-title mt-3 mb-8">
+          {title}
+        </h2>
         {children}
       </div>
     </section>
   );
 }
 
-function CaseBlock({ label, value }: { label: string; value: string }) {
+function AgentProject({ project, index }: { project: (typeof agenticProjects)[number]; index: number }) {
   return (
-    <div>
-      <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-400">{label}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-300">{value}</p>
+    <article className="grid gap-8 border-t border-rule py-12 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-14">
+      <div>
+        <p className="mono text-graphite">2.{index + 1}</p>
+        <h3 className="mt-1 text-2xl font-medium tracking-[-0.025em]">{project.title}</h3>
+        <p className="mono mt-1 text-graphite">
+          {project.where}, {project.period}
+        </p>
+        <dl className="mt-6 flex flex-col gap-3">
+          {project.proof.map((p) => (
+            <div key={p.label} className="flex flex-col-reverse">
+              <dt className="mono text-graphite">{p.label}</dt>
+              <dd className="m-0 text-lg tracking-[-0.02em]">{p.value}</dd>
+            </div>
+          ))}
+        </dl>
+        {project.links.length ? (
+          <ul className="mt-6 space-y-1.5">
+            {project.links.map((l) => (
+              <li key={l.href}>
+                <a className="link inline-flex items-center gap-1" href={l.href} {...(l.href.startsWith("http") ? { target: "_blank", rel: "noreferrer" } : {})}>
+                  {l.label}
+                  <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mono mt-6 text-graphite">Internal system, no public code</p>
+        )}
+      </div>
+      <div className="min-w-0">
+        <p className="max-w-[24ch] text-[clamp(1.5rem,2.8vw,2.2rem)] leading-[1.08] tracking-[-0.03em]">{project.headline}</p>
+        <div className="read-plain measure mt-6 flex flex-col gap-4">
+          {project.plain.map((t) => (
+            <p key={t} className="m-0">{t}</p>
+          ))}
+        </div>
+        <div className="read-technical measure mt-6 flex flex-col gap-4">
+          {project.technical.map((t) => (
+            <p key={t} className="m-0">{t}</p>
+          ))}
+        </div>
+        <ol className="flow mt-8 list-none p-0" aria-label={`${project.title} flow`}>
+          {project.flow.map((step) => (
+            <li key={step}>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+        <ul className="read-technical mt-5 flex list-none flex-wrap gap-1.5 p-0" aria-label="Stack">
+          {project.stack.map((s) => (
+            <li key={s} className="tag">
+              {s}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </article>
+  );
+}
+
+function ProjectIndex() {
+  return (
+    <div className="mt-10 border-b border-rule">
+      {projects.map((project) => (
+        <details key={project.title} className="group border-t border-rule">
+          <summary className="row-summary grid grid-cols-[1fr_auto] items-baseline gap-x-6 gap-y-1 py-4 md:grid-cols-[minmax(0,1fr)_14rem_auto]">
+            <span className="text-lg tracking-[-0.015em] group-hover:underline group-hover:decoration-rule group-hover:underline-offset-4">
+              {project.title}
+            </span>
+            <span className="mono col-start-1 row-start-2 text-graphite md:col-start-2 md:row-start-1">{project.period}</span>
+            <Plus aria-hidden="true" className="row-toggle row-span-2 h-4 w-4 self-center text-graphite md:row-span-1" />
+          </summary>
+          <div className="grid gap-6 pb-8 pt-2 md:grid-cols-2 md:gap-12">
+            <div className="read-plain measure flex flex-col gap-3 md:col-span-2">
+              <p className="m-0">{project.problem}</p>
+              <p className="m-0 text-graphite">{project.solution}</p>
+            </div>
+            <div className="read-technical flex flex-col gap-4">
+              <Field label="Architecture" value={project.architecture} />
+              <Field label="Challenges" value={project.challenges.join(". ") + "."} />
+            </div>
+            <div className="read-technical flex flex-col gap-4">
+              <Field label="Lessons" value={project.lessons.join(". ") + "."} />
+              <ul className="flex list-none flex-wrap gap-1.5 p-0">
+                {project.stack.map((s) => (
+                  <li key={s} className="tag">
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {project.github ? (
+              <a className="link inline-flex items-center gap-1 md:col-span-2" href={project.github} target="_blank" rel="noreferrer">
+                Source on GitHub <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />
+              </a>
+            ) : null}
+          </div>
+        </details>
+      ))}
     </div>
   );
 }
 
-function CaseList({ label, values }: { label: string; values: string[] }) {
+function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-400">{label}</p>
-      <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-300">
-        {values.map((value) => (
-          <li key={value} className="flex gap-2">
-            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-azure" />
-            {value}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function Socials() {
-  return (
-    <div className="flex gap-2">
-      <a className={cn(buttonVariants({ variant: "ghost", size: "icon" }))} href={profile.github} target="_blank" rel="noreferrer" aria-label="GitHub">
-        <Github className="h-4 w-4" />
-      </a>
-      <a className={cn(buttonVariants({ variant: "ghost", size: "icon" }))} href={profile.linkedin} target="_blank" rel="noreferrer" aria-label="LinkedIn">
-        <Linkedin className="h-4 w-4" />
-      </a>
-      <CopyEmailButton email={profile.email} />
+      <p className="mono m-0 text-graphite">{label}</p>
+      <p className="m-0 mt-1">{value}</p>
     </div>
   );
 }
