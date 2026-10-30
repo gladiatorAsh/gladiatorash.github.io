@@ -79,7 +79,7 @@ export default function CommandPalette() {
       { id: "theme", label: "Toggle light / dark theme", group: "Actions", icon: SunMoon, keywords: "mode appearance", run: toggleTheme },
       { id: "email", label: "Send an email", group: "Links", icon: Mail, keywords: "mailto contact", run: () => (window.location.href = `mailto:${profile.email}`) },
       { id: "papers", label: "Paper Desk: today's AI papers", group: "Links", icon: BookOpen, keywords: "research arxiv reading", run: () => (window.location.href = "/papers/") },
-      { id: "mcp", label: "MCP learning path", group: "Links", icon: BookOpen, keywords: "model context protocol course study learn", run: () => (window.location.href = "/learn/mcp/") },
+      { id: "learn", label: "Learning paths", group: "Links", icon: BookOpen, keywords: "course study learn mcp a2a evals observability security context", run: () => (window.location.href = "/learn/") },
       { id: "deals", label: "Deals Galore dashboard", group: "Links", icon: Github, keywords: "shopping agent deals", run: () => window.open("https://www.ashutoshysingh.com/deals-galore/", "_blank", "noopener") },
       { id: "github", label: "Open GitHub", group: "Links", icon: Github, keywords: "code repos", run: () => window.open(profile.github, "_blank", "noopener") },
       { id: "linkedin", label: "Open LinkedIn", group: "Links", icon: Linkedin, keywords: "profile", run: () => window.open(profile.linkedin, "_blank", "noopener") },

@@ -1,41 +1,16 @@
-import type { Metadata } from "next";
-import { ArrowLeft } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { profile } from "@/lib/portfolio";
-
-const title = "MCP Learning Path";
-const description =
-  "A six-week course for learning the Model Context Protocol: the official docs, the Hugging Face MCP Course and Flow Framework, sequenced against the 2026-07-28 spec.";
-
-export const metadata: Metadata = {
-  title: `${title} | ${profile.name}`,
-  description,
-  alternates: { canonical: "/learn/mcp/" },
-  openGraph: { title, description, url: "https://www.ashutoshysingh.com/learn/mcp/", type: "article" }
-};
+import type { LearnPath, Link, Module, Resource } from "./types";
 
 const DOCS = "https://modelcontextprotocol.io/docs/2026-07-28";
 const SPEC = "https://modelcontextprotocol.io/specification/2026-07-28";
 const HF = "https://huggingface.co/learn/mcp-course";
 const FLOW = "https://github.com/flow-engineer/flow";
 
-type Link = { label: string; href: string; note?: string };
-type Block = { heading: string; items: (string | Link)[]; ordered?: boolean };
-type Module = {
-  id: string;
-  week: string;
-  title: string;
-  lead: string;
-  blocks: Block[];
-  table?: { head: string[]; rows: string[][]; source?: Link };
-  notes?: { label: string; text: string }[];
-  checkpoint: string;
-};
 
-const resources = [
-  { name: "Official MCP docs", href: "https://modelcontextprotocol.io/docs/", role: "Source of truth", use: "Concepts, the current spec (2026-07-28), SDKs, security, Inspector" },
-  { name: "Hugging Face MCP Course", href: `${HF}/en/unit0/introduction`, role: "Guided hands-on", use: "Units 1–3 with quizzes, projects and two free certificates" },
-  { name: "Flow Framework", href: FLOW, role: "Real-world codebase", use: "How a production framework exposes tools as an MCP server, CLI and plugin" }
+const resources: Resource[] = [
+  { label: "Official MCP docs", href: "https://modelcontextprotocol.io/docs/", role: "Source of truth", use: "Concepts, the current spec (2026-07-28), SDKs, security, Inspector" },
+  { label: "Hugging Face MCP Course", href: `${HF}/en/unit0/introduction`, role: "Guided hands-on", use: "Units 1–3 with quizzes, projects and two free certificates" },
+  { label: "Mastering MCP (Educative)", href: "https://www.educative.io/courses/advanced-model-context-protocol", role: "Subscription course", use: "About 7 h on multi-server MCP, RAG servers, authorization and debugging" },
+  { label: "Flow Framework", href: FLOW, role: "Real-world codebase", use: "How a production framework exposes tools as an MCP server, CLI and plugin" }
 ];
 
 const modules: Module[] = [
@@ -68,6 +43,10 @@ const modules: Module[] = [
           { label: "Gradio MCP Integration", href: `${HF}/en/unit1/gradio-mcp` },
           { label: "Claim the Fundamentals certificate", href: `${HF}/en/unit1/certificate` }
         ]
+      },
+      {
+        heading: "Optional (Educative, ~2 h)",
+        items: [{ label: "MCP Fundamentals for Building AI Agents", href: "https://www.educative.io/courses/model-context-protocol", note: "a faster second pass on host, client and server roles" }]
       }
     ],
     notes: [
@@ -199,7 +178,8 @@ const modules: Module[] = [
           { label: "Security Best Practices", href: `${DOCS}/tutorials/security/security_best_practices.md`, note: "tool poisoning, confused deputy, token passthrough" },
           { label: "Local Server Security", href: `${DOCS}/tutorials/security/local-server-security.md` },
           { label: "Extensions overview", href: "https://modelcontextprotocol.io/extensions/overview.md", note: "Apps, Tasks, Skills" },
-          { label: "MCP Registry quickstart", href: "https://modelcontextprotocol.io/registry/quickstart.md" }
+          { label: "MCP Registry quickstart", href: "https://modelcontextprotocol.io/registry/quickstart.md" },
+          { label: "Mastering MCP (Educative)", href: "https://www.educative.io/courses/advanced-model-context-protocol", note: "the multi-server and authorization modules; check them against the current spec" }
         ]
       }
     ],
@@ -255,7 +235,7 @@ const modules: Module[] = [
   }
 ];
 
-const capstone = [
+const capstoneItems = [
   "I can draw host → client → server and say what each primitive's controller is",
   "My server passes the Inspector in both modern and legacy eras",
   "It has at least one tool, one resource and one prompt",
@@ -278,205 +258,27 @@ const references: Link[] = [
   { label: "HF MCP Course repo", href: "https://github.com/huggingface/mcp-course", note: "course source, issues and Discord" }
 ];
 
-function Ext({ link }: { link: Link }) {
-  return (
-    <>
-      <a className="link" href={link.href} target="_blank" rel="noreferrer">
-        {link.label}
-      </a>
-      {link.note ? <span className="text-graphite">: {link.note}</span> : null}
-    </>
-  );
-}
 
-function Item({ item }: { item: string | Link }) {
-  return <li className="pl-1">{typeof item === "string" ? item : <Ext link={item} />}</li>;
-}
-
-export default function McpLearningPath() {
-  return (
-    <>
-      {/* The home page pads anchors for its pinned citadel; this page only has the 3.5rem bar. */}
-      <style>{"html{scroll-padding-top:5rem}"}</style>
-      <header className="fixed inset-x-0 top-0 z-40 border-b border-rule bg-paper/92 backdrop-blur-md">
-        <div className="flex h-14 items-center gap-4 px-4 md:px-10">
-          <a href="/" className="inline-flex shrink-0 items-center gap-2 text-[0.95rem] font-medium tracking-[-0.01em]">
-            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-            {profile.name}
-          </a>
-          <p className="mono m-0 hidden flex-1 truncate text-graphite md:block">Learn / MCP</p>
-          <span className="flex-1 md:hidden" />
-          <ThemeToggle className="!h-9 !w-9 !rounded-none" />
-        </div>
-      </header>
-
-      <main id="main" className="mx-auto max-w-5xl px-4 pb-20 pt-28 md:px-10">
-        <p className="mono m-0 text-graphite">Study notes · six weeks · 3–4 h a week</p>
-        <h1 className="chapter-title mb-6 mt-3 !max-w-[20ch]">{title}</h1>
-        <p className="measure m-0 text-[1.15rem] text-graphite">
-          A course I put together for learning the Model Context Protocol, from concepts to shipping and contributing to an MCP server. It
-          sequences three resources against the current 2026-07-28 spec.
-        </p>
-
-        <nav aria-label="Modules" className="mt-10 flex flex-wrap gap-2">
-          {modules.map((m, i) => (
-            <a key={m.id} className="key-btn" href={`#${m.id}`}>
-              <span>{m.title.split(":")[0]}</span>
-              <span className="key" aria-hidden="true">{i + 1}</span>
-            </a>
-          ))}
-          <a className="key-btn" href="#capstone">
-            <span>Capstone</span>
-          </a>
-        </nav>
-
-        <section className="mt-16 border-t border-rule pt-10" aria-labelledby="how-title">
-          <h2 id="how-title" className="m-0 text-2xl font-medium tracking-[-0.025em]">
-            How the three resources fit
-          </h2>
-          <div className="mt-6 overflow-x-auto">
-            <table className="w-full min-w-[34rem] border-collapse text-left text-[0.95rem]">
-              <thead>
-                <tr className="mono text-graphite">
-                  <th className="border-b border-rule py-2 pr-4 font-normal">Resource</th>
-                  <th className="border-b border-rule py-2 pr-4 font-normal">Role</th>
-                  <th className="border-b border-rule py-2 font-normal">Use it for</th>
-                </tr>
-              </thead>
-              <tbody>
-                {resources.map((r) => (
-                  <tr key={r.name} className="align-top">
-                    <td className="border-b border-rule py-3 pr-4">
-                      <a className="link" href={r.href} target="_blank" rel="noreferrer">
-                        {r.name}
-                      </a>
-                    </td>
-                    <td className="border-b border-rule py-3 pr-4">{r.role}</td>
-                    <td className="border-b border-rule py-3 text-graphite">{r.use}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <ul className="measure mt-6 list-disc space-y-3 pl-5">
-            <li>
-              <strong className="font-medium">Flow is a chat-agent framework first.</strong> Its MCP support lives in the mcp/ and cli/ packages,
-              so it is the place to see MCP applied, not to learn it from zero. It comes last.
-            </li>
-            <li>
-              <strong className="font-medium">The HF course predates the latest spec.</strong> Do it for the hands-on, then use week 5 to catch up
-              on what changed.
-            </li>
-          </ul>
-        </section>
-
-        {modules.map((m, i) => (
-          <section key={m.id} id={m.id} className="mt-16 scroll-mt-24 border-t border-rule pt-10" aria-labelledby={`${m.id}-title`}>
-            <p className="mono m-0 text-graphite">
-              {String(i + 1).padStart(2, "0")} / {m.week}
-            </p>
-            <h2 id={`${m.id}-title`} className="m-0 mt-2 text-[clamp(1.6rem,3vw,2.3rem)] font-[450] leading-[1.05] tracking-[-0.035em]">
-              {m.title}
-            </h2>
-            <p className="measure mt-4 text-graphite">{m.lead}</p>
-
-            {m.table ? (
-              <div className="mt-6 overflow-x-auto">
-                <table className="w-full min-w-[36rem] border-collapse text-left text-[0.92rem]">
-                  <thead>
-                    <tr className="mono text-graphite">
-                      {m.table.head.map((h) => (
-                        <th key={h} className="border-b border-rule py-2 pr-4 font-normal">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {m.table.rows.map((row) => (
-                      <tr key={row[0]} className="align-top">
-                        {row.map((cell, c) => (
-                          <td key={c} className={`border-b border-rule py-3 pr-4 ${c === 0 ? "font-medium" : "text-graphite"}`}>
-                            {cell}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {m.table.source ? (
-                  <p className="mono mt-2 text-graphite">
-                    Source: <Ext link={m.table.source} />
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-
-            {m.blocks.map((b) => {
-              const List = b.ordered ? "ol" : "ul";
-              return (
-                <div key={b.heading} className="mt-8">
-                  <h3 className="m-0 text-lg font-medium tracking-[-0.02em]">{b.heading}</h3>
-                  <List className={`measure mt-3 space-y-2 pl-5 ${b.ordered ? "list-decimal" : "list-disc"}`}>
-                    {b.items.map((item, k) => (
-                      <Item key={k} item={item} />
-                    ))}
-                  </List>
-                </div>
-              );
-            })}
-
-            {m.notes?.map((n) => (
-              <p key={n.label} className="measure mt-6">
-                <strong className="font-medium">{n.label}:</strong> {n.text}
-              </p>
-            ))}
-
-            <p className="measure mt-8 border-l-2 border-signal pl-4">
-              <span className="mono block text-graphite">Checkpoint</span>
-              {m.checkpoint}
-            </p>
-          </section>
-        ))}
-
-        <section id="capstone" className="mt-16 scroll-mt-24 border-t border-rule pt-10" aria-labelledby="capstone-title">
-          <h2 id="capstone-title" className="m-0 text-[clamp(1.6rem,3vw,2.3rem)] font-[450] tracking-[-0.035em]">
-            Capstone
-          </h2>
-          <p className="measure mt-4 text-graphite">
-            Build one remote MCP server that uses all three primitives, runs on the current spec, and is published somewhere real, such as a free
-            HF Space listed in the MCP Registry. Done when every line holds:
-          </p>
-          <ul className="measure mt-4 list-none space-y-2 p-0">
-            {capstone.map((c) => (
-              <li key={c} className="flex gap-3">
-                <span aria-hidden="true" className="mt-[0.45rem] h-3 w-3 shrink-0 border border-ink" />
-                <span>{c}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="mt-16 border-t border-rule pt-10" aria-labelledby="refs-title">
-          <h2 id="refs-title" className="m-0 text-2xl font-medium tracking-[-0.025em]">
-            Reference links
-          </h2>
-          <ul className="measure mt-4 list-disc space-y-2 pl-5">
-            {references.map((r) => (
-              <Item key={r.href} item={r} />
-            ))}
-          </ul>
-        </section>
-
-        <footer className="mt-20 border-t border-rule pt-8 text-graphite">
-          <p className="mono m-0">
-            Last reviewed October 2026 against MCP spec 2026-07-28. ·{" "}
-            <a className="link" href="/">
-              Back to {profile.name}
-            </a>
-          </p>
-        </footer>
-      </main>
-    </>
-  );
-}
+export const mcp: LearnPath = {
+  slug: "mcp",
+  title: "MCP Learning Path",
+  kicker: "Study notes · six weeks · 3–4 h a week",
+  length: "6 weeks",
+  summary: "Model Context Protocol from concepts to shipping and contributing to an MCP server.",
+  description:
+    "A six-week course for learning the Model Context Protocol: the official docs, the Hugging Face MCP Course and Flow Framework, sequenced against the 2026-07-28 spec.",
+  intro:
+    "A course I put together for learning the Model Context Protocol, from concepts to shipping and contributing to an MCP server. It sequences three resources against the current 2026-07-28 spec.",
+  resources,
+  resourceNotes: [
+    { label: "Flow is a chat-agent framework first.", text: "Its MCP support lives in the mcp/ and cli/ packages, so it is the place to see MCP applied, not to learn it from zero. It comes last." },
+    { label: "The HF course predates the latest spec.", text: "Do it for the hands-on, then use week 5 to catch up on what changed." }
+  ],
+  modules,
+  capstone: {
+    lead: "Build one remote MCP server that uses all three primitives, runs on the current spec, and is published somewhere real, such as a free HF Space listed in the MCP Registry. Done when every line holds:",
+    items: capstoneItems
+  },
+  references,
+  reviewed: "Last reviewed October 2026 against MCP spec 2026-07-28."
+};

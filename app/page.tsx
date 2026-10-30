@@ -160,11 +160,11 @@ export default function Home() {
               <a className="link" href="/papers/">
                 Paper Desk
               </a>
-              , one of the agents above. I'm also working through the{" "}
-              <a className="link" href="/learn/mcp/">
-                MCP learning path
+              , one of the agents above. I also keep{" "}
+              <a className="link" href="/learn/">
+                learning paths
               </a>{" "}
-              I put together for the Model Context Protocol.
+              for the agent stack: MCP, A2A, context engineering, evals, observability and security.
             </p>
           </Chapter>
 
