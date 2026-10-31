@@ -48,7 +48,6 @@ export const SECTIONS = [
     id: "canada",
     title: "Canada",
     feeds: [
-      { name: "CBC News", url: "https://rss.cbc.ca/lineup/topstories.xml" },
       { name: "Global News", url: "https://globalnews.ca/canada/feed/" },
       { name: "National Post", url: "https://nationalpost.com/category/news/canada/feed/" },
       { name: "Google News", url: gnews("", "CA"), aggregator: true }
