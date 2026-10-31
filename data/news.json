@@ -1,0 +1,9 @@
+{
+  "generatedAt": null,
+  "sections": [
+    { "id": "tech", "title": "Tech", "items": [] },
+    { "id": "india", "title": "India", "items": [] },
+    { "id": "canada", "title": "Canada", "items": [] },
+    { "id": "us", "title": "United States", "items": [] }
+  ]
+}

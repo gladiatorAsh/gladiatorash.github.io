@@ -5,7 +5,7 @@ on:
     branches:
       - master
   schedule:
-    - cron: "53 13 * * *"   # daily, 30 min after deals-galore refreshes /papers
+    - cron: "53 13 * * *"   # daily (6:53am PDT): refreshes /news, and runs 30 min after deals-galore refreshes /papers
   workflow_dispatch:
 
 permissions:
@@ -40,6 +40,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Fetch today's news (/news)
+        # Pulls RSS headlines into data/news.json; keeps the committed snapshot if feeds fail.
+        run: node scripts/fetch-news.mjs
 
       - name: Typecheck
         run: pnpm typecheck

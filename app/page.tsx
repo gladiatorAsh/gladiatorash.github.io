@@ -164,7 +164,11 @@ export default function Home() {
               <a className="link" href="/learn/">
                 learning paths
               </a>{" "}
-              for the agent stack: MCP, A2A, context engineering, evals, observability and security.
+              for the agent stack: MCP, A2A, context engineering, evals, observability and security, and a{" "}
+              <a className="link" href="/news/">
+                daily news digest
+              </a>{" "}
+              covering tech, India, Canada and the US.
             </p>
           </Chapter>
 
