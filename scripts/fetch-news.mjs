@@ -14,7 +14,7 @@ const OUT = resolve(dirname(fileURLToPath(import.meta.url)), "../data/news.json"
 const WINDOW_HOURS = 36; // "today" across time zones: IST is 12.5h ahead of PT
 const PER_SECTION = 12;
 const PER_SOURCE = 4;
-const TIMEOUT_MS = 15000;
+const TIMEOUT_MS = 25000;
 
 const gnews = (path, region) => {
   const [hl, gl] = { US: ["en-US", "US"], IN: ["en-IN", "IN"], CA: ["en-CA", "CA"] }[region];
@@ -38,7 +38,8 @@ export const SECTIONS = [
     title: "India",
     feeds: [
       { name: "The Hindu", url: "https://www.thehindu.com/news/national/feeder/default.rss" },
-      { name: "Indian Express", url: "https://indianexpress.com/section/india/feed/" },
+      { name: "Times of India", url: "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms" },
+      { name: "NDTV", url: "https://feeds.feedburner.com/ndtvnews-india-news" },
       { name: "Hindustan Times", url: "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml" },
       { name: "Google News", url: gnews("", "IN"), aggregator: true }
     ]
@@ -47,9 +48,9 @@ export const SECTIONS = [
     id: "canada",
     title: "Canada",
     feeds: [
-      { name: "CBC News", url: "https://www.cbc.ca/webfeed/rss/rss-topstories" },
+      { name: "CBC News", url: "https://rss.cbc.ca/lineup/topstories.xml" },
       { name: "Global News", url: "https://globalnews.ca/canada/feed/" },
-      { name: "CTV News", url: "https://www.ctvnews.ca/rss/ctvnews-ca-top-stories-public-rss-1.822009" },
+      { name: "National Post", url: "https://nationalpost.com/category/news/canada/feed/" },
       { name: "Google News", url: gnews("", "CA"), aggregator: true }
     ]
   },
