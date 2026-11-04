@@ -1,0 +1,12 @@
+name = "moon-golf-leaderboard"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[vars]
+GITHUB_REPO = "gladiatorAsh/gladiatorash.github.io"
+GITHUB_BRANCH = "master"
+BOARD_PATH = "public/leaderboard.json"
+ALLOWED_ORIGINS = "https://www.ashutoshysingh.com,https://ashutoshysingh.com,https://gladiatorash.github.io"
+
+# The token is a secret, set once with:  npx wrangler secret put GITHUB_TOKEN
