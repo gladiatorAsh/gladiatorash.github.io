@@ -34,21 +34,30 @@ const RESTITUTION: Record<Surface, number> = { 0: 0.1, 1: 0.52, 2: 0.25 };
 const IMPACT_FRICTION: Record<Surface, number> = { 0: 0.55, 1: 0.1, 2: 0.2 };
 const ROLL_DECEL: Record<Surface, number> = { 0: 190, 1: 28, 2: 55 };
 
+export type Mode = "solo" | "bot";
+export type Difficulty = "easy" | "medium" | "hard";
 export type HoleResult = { par: number; strokes: number; points: number };
+export type PlayerHud = { label: string; strokes: number; holed: boolean; total: number; strokeTotal: number; results: HoleResult[] };
+export type HoleSummary = { par: number; rows: { label: string; strokes: number; points: number; name: string }[] };
 export type Hud = {
   phase: Phase;
+  mode: Mode;
   hole: number; // 1-based
   par: number;
+  turn: number; // index into players
+  botStatus: "thinking" | "swinging" | null;
+  club: Club;
+  toPin: number; // metres, for the ball in play
+  fastForward: boolean;
+  players: PlayerHud[];
+  lastHole: HoleSummary | null;
+  // The human player's round, for the leaderboard.
   strokes: number;
   total: number;
-  club: Club;
-  toPin: number; // metres
-  fastForward: boolean;
   results: HoleResult[];
-  lastResult: (HoleResult & { name: string }) | null;
 };
 
-type Hole = { width: number; ys: Float32Array; kinds: Uint8Array; cupX: number; rimY: number; par: number };
+export type Hole = { width: number; ys: Float32Array; kinds: Uint8Array; cupX: number; rimY: number; par: number };
 
 // ---------- seeded randomness ----------
 
@@ -164,7 +173,205 @@ function suggestClub(dx: number): Club {
   return d > 1000 ? "driver" : d > 480 ? "iron" : d > 110 ? "wedge" : "putter";
 }
 
+// ---------- physics (pure, so the bot can rehearse shots with it) ----------
+
+type Ball = { x: number; y: number; vx: number; vy: number; club: Club; firstImpact: boolean; rest: number; t: number };
+type StepResult = "move" | "rest" | "sunk" | "oob";
+
+/** Launch velocity for a club, a direction and a power from 0 to 1. Putts are kept near the ground. */
+export function launch(club: Club, angle: number, power: number) {
+  let a = angle;
+  if (club === "putter") {
+    const left = Math.cos(a) < 0;
+    const lift = left ? -(Math.PI + a) : -a;
+    const clamped = Math.max(-0.2, Math.min(PUTTER_MAX_LIFT, lift));
+    a = left ? -Math.PI + clamped : -clamped;
+  }
+  const v = CLUB_SPEED[club] * Math.max(0, Math.min(1, power));
+  return { vx: Math.cos(a) * v, vy: Math.sin(a) * v, angle: a };
+}
+
+function collide(hole: Hole, b: Ball, dt: number) {
+  let contact: { nx: number; ny: number; kind: Surface } | null = null;
+  for (let pass = 0; pass < 2; pass++) {
+    const i0 = Math.max(0, Math.floor((b.x - R) / STEP) - 1);
+    const i1 = Math.min(hole.ys.length - 2, Math.ceil((b.x + R) / STEP) + 1);
+    const ground = groundAt(hole, b.x);
+    const below = b.y > ground;
+    let best = 0;
+    let bnx = 0;
+    let bny = -1;
+    let bk: Surface = 0;
+    for (let i = i0; i <= i1; i++) {
+      const ax = i * STEP;
+      const ay = hole.ys[i];
+      const ex = STEP;
+      const ey = hole.ys[i + 1] - ay;
+      const t = Math.max(0, Math.min(1, ((b.x - ax) * ex + (b.y - ay) * ey) / (ex * ex + ey * ey)));
+      let dx = b.x - (ax + ex * t);
+      let dy = b.y - (ay + ey * t);
+      let dist = Math.hypot(dx, dy);
+      // Below the surface counts as inside, even when the centre went through.
+      if (dist < 1e-6 || below) {
+        const len = Math.hypot(ex, ey);
+        dx = ey / len;
+        dy = -ex / len;
+        dist = below ? -Math.abs(b.y - ground) : 0;
+      } else {
+        dx /= dist;
+        dy /= dist;
+      }
+      const pen = R - dist;
+      if (pen > best) {
+        best = pen;
+        bnx = dx;
+        bny = dy;
+        bk = hole.kinds[i] as Surface;
+      }
+    }
+    if (best <= 0) break;
+    b.x += bnx * best;
+    b.y += bny * best;
+    contact = { nx: bnx, ny: bny, kind: bk };
+  }
+  if (!contact) return false;
+
+  const { nx, ny, kind } = contact;
+  const vn = b.vx * nx + b.vy * ny;
+  let tx = b.vx - vn * nx;
+  let ty = b.vy - vn * ny;
+  if (vn < -35) {
+    const spin = b.club === "wedge" && b.firstImpact;
+    const e = RESTITUTION[kind] * (spin ? 0.6 : 1);
+    const f = Math.min(0.9, IMPACT_FRICTION[kind] + (spin ? 0.35 : 0));
+    b.firstImpact = false;
+    tx *= 1 - f;
+    ty *= 1 - f;
+    b.vx = tx - e * vn * nx;
+    b.vy = ty - e * vn * ny;
+  } else {
+    // Rolling: drop the normal part, slow down along the surface.
+    const sp = Math.hypot(tx, ty);
+    const ns = Math.max(0, sp - ROLL_DECEL[kind] * dt);
+    const k = sp > 1e-6 ? ns / sp : 0;
+    b.vx = tx * k;
+    b.vy = ty * k;
+  }
+  return true;
+}
+
+function stepBall(hole: Hole, b: Ball, dt: number): StepResult {
+  b.vy += G * dt;
+  b.x += b.vx * dt;
+  b.y += b.vy * dt;
+  b.t += dt;
+  if (b.x < -R * 2 || b.x > hole.width + R * 2) return "oob";
+  const touching = collide(hole, b, dt);
+  if (Math.abs(b.x - hole.cupX) < CUP_HALF - 1 && b.y > hole.rimY + R * 0.6) {
+    b.x = hole.cupX;
+    b.y = hole.rimY + CUP_DEPTH - R;
+    b.vx = b.vy = 0;
+    return "sunk";
+  }
+  if (touching && Math.hypot(b.vx, b.vy) < 9) b.rest += dt;
+  else b.rest = 0;
+  if (b.rest > 0.25 || b.t > 45) {
+    b.vx = b.vy = 0;
+    return "rest";
+  }
+  return "move";
+}
+
+const FIXED = 1 / 240;
+
+function newBall(x: number, y: number, club: Club, angle: number, power: number): Ball {
+  const { vx, vy } = launch(club, angle, power);
+  return { x, y, vx, vy, club, firstImpact: true, rest: 0, t: 0 };
+}
+
+/** Plays a shot to the end without drawing it. */
+export function simulateShot(hole: Hole, x: number, y: number, club: Club, angle: number, power: number) {
+  const b = newBall(x, y, club, angle, power);
+  for (let i = 0; i < 45 * 240 + 10; i++) {
+    const r = stepBall(hole, b, FIXED);
+    if (r !== "move") return { result: r, x: b.x, y: b.y };
+  }
+  return { result: "rest" as const, x: b.x, y: b.y };
+}
+
+// ---------- the bot ----------
+
+export const BOT_NOISE: Record<Difficulty, { angle: number; power: number }> = {
+  easy: { angle: (9 * Math.PI) / 180, power: 0.2 },
+  medium: { angle: (5 * Math.PI) / 180, power: 0.11 },
+  hard: { angle: (3 * Math.PI) / 180, power: 0.065 }
+};
+
+type Plan = { club: Club; angle: number; power: number; cost: number };
+
+/**
+ * Searches club, launch angle and power by simulating each candidate on the real terrain, keeping
+ * the one that finishes nearest the cup. A generator so the search can be spread over frames.
+ */
+export function* planShot(hole: Hole, x: number, y: number): Generator<void, Plan> {
+  const dir = hole.cupX >= x ? 1 : -1;
+  const toward = (elev: number) => (dir > 0 ? -elev : -Math.PI + elev);
+  const first = suggestClub(hole.cupX - x);
+  const order: Club[] = ["driver", "iron", "wedge", "putter"];
+  const fi = order.indexOf(first);
+  const clubs = Array.from(new Set([first, order[Math.max(0, fi - 1)], order[Math.min(3, fi + 1)]]));
+  const cost = (r: ReturnType<typeof simulateShot>) =>
+    r.result === "sunk" ? -1 : r.result === "oob" ? 1e6 : Math.abs(r.x - hole.cupX) + (Math.abs(r.x - hole.cupX) < CUP_HALF * 3 ? 0 : 0);
+
+  let best: Plan = { club: first, angle: toward(Math.PI / 4), power: 0.5, cost: Infinity };
+  let n = 0;
+  for (const club of clubs) {
+    const elevs = club === "putter" ? [0, 0.05, 0.1] : [12, 20, 28, 36, 44, 52, 60, 68].map((d) => (d * Math.PI) / 180);
+    for (const e of elevs) {
+      for (let p = 0.06; p <= 1.0001; p += 0.04) {
+        const r = simulateShot(hole, x, y, club, toward(e), p);
+        const c = cost(r);
+        if (c < best.cost) best = { club, angle: toward(e), power: p, cost: c };
+        if (++n % 12 === 0) yield;
+      }
+    }
+  }
+  // Refine around the best candidate.
+  const base = best;
+  for (let da = -4; da <= 4; da++) {
+    for (let dp = -0.03; dp <= 0.0301; dp += 0.006) {
+      const angle = base.angle + ((da * 0.75) * Math.PI) / 180;
+      const power = Math.max(0.02, Math.min(1, base.power + dp));
+      const c = cost(simulateShot(hole, x, y, base.club, angle, power));
+      if (c < best.cost) best = { club: base.club, angle, power, cost: c };
+      if (++n % 12 === 0) yield;
+    }
+  }
+  return best;
+}
+
+function gauss() {
+  let u = 0;
+  let v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
 // ---------- the game ----------
+
+type Player = {
+  label: string;
+  bot: boolean;
+  color: string;
+  visor: string;
+  ball: Ball;
+  lastRest: { x: number; y: number };
+  strokes: number;
+  holed: boolean;
+  results: HoleResult[];
+  trail: { x: number; y: number }[];
+};
 
 export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud: Hud) => void) {
   const ctx = canvas.getContext("2d")!;
@@ -174,28 +381,29 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
   const starRng = mulberry32(hashSeed(seed + "stars"));
   const stars = Array.from({ length: 220 }, () => ({ x: starRng(), y: starRng(), s: starRng() * 1.4 + 0.3, tw: starRng() * 6.28 }));
 
+  let mode: Mode = "solo";
+  let difficulty: Difficulty = "medium";
   let holeIndex = 0;
   let hole = course[0];
   let phase: Phase = "aim";
   let club: Club = "driver";
-  let strokes = 0;
-  const results: HoleResult[] = [];
-  let lastResult: Hud["lastResult"] = null;
+  let players: Player[] = [];
+  let turn = 0;
+  let lastHole: HoleSummary | null = null;
   let fastForward = false;
   let inputOn = false;
-
-  const ball = { x: TEE_X, y: 0, vx: 0, vy: 0 };
-  let lastRest = { x: TEE_X, y: 0 };
-  let restTimer = 0;
-  let flightTime = 0;
-  let firstImpact = true;
-  let trail: { x: number; y: number }[] = [];
   let message: { text: string; until: number } | null = null;
 
-  // Aim state. Drag vector in world units; keyboard edits angle/power directly.
+  // Bot turn state.
+  let botStatus: Hud["botStatus"] = null;
+  let botSearch: Generator<void, Plan> | null = null;
+  let botPlan: Plan | null = null;
+  let botSwingAt = 0;
+
+  // Aim state for whoever is up. Keyboard edits angle/power directly.
   let aiming = false;
   let dragStart = { x: 0, y: 0 };
-  let aim = { angle: -Math.PI / 4, power: 0 }; // angle of the launch direction, power 0..1
+  let aim = { angle: -Math.PI / 4, power: 0 };
   let facing = 1;
 
   // Camera
@@ -205,39 +413,60 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
   let scale = 1;
   let camX = 0;
 
-  function placeOnGround(x: number) {
-    ball.x = x;
-    ball.y = groundAt(hole, x) - R;
-    ball.vx = 0;
-    ball.vy = 0;
+  const active = () => players[turn];
+  const human = () => players[0];
+
+  function makePlayers() {
+    const restBall = (): Ball => ({ x: TEE_X, y: 0, vx: 0, vy: 0, club: "driver", firstImpact: true, rest: 0, t: 0 });
+    const list: Player[] = [
+      { label: "You", bot: false, color: "#ffffff", visor: "#d6a74a", ball: restBall(), lastRest: { x: TEE_X, y: 0 }, strokes: 0, holed: false, results: [], trail: [] }
+    ];
+    if (mode === "bot")
+      list.push({ label: "Bot", bot: true, color: "#f0b45b", visor: "#5fd0c0", ball: restBall(), lastRest: { x: TEE_X, y: 0 }, strokes: 0, holed: false, results: [], trail: [] });
+    return list;
   }
 
   function resetHole() {
     hole = course[holeIndex];
-    strokes = 0;
     phase = "aim";
-    placeOnGround(TEE_X);
-    lastRest = { x: ball.x, y: ball.y };
-    trail = [];
-    facing = 1;
-    club = suggestClub(hole.cupX - ball.x);
-    aim = { angle: club === "putter" ? 0 : -Math.PI / 4, power: 0 };
+    for (const p of players) {
+      p.ball.x = TEE_X;
+      p.ball.y = groundAt(hole, TEE_X) - R;
+      p.ball.vx = p.ball.vy = 0;
+      p.lastRest = { x: p.ball.x, y: p.ball.y };
+      p.strokes = 0;
+      p.holed = false;
+      p.trail = [];
+    }
+    turn = 0;
+    beginTurn();
     camX = targetCam();
-    emit();
   }
 
   function emit() {
+    const me = human();
     onHud({
       phase,
+      mode,
       hole: holeIndex + 1,
       par: hole.par,
-      strokes,
-      total: results.reduce((s, r) => s + r.points, 0),
+      turn,
+      botStatus,
       club,
-      toPin: Math.round(Math.abs(hole.cupX - ball.x) / 10),
+      toPin: Math.round(Math.abs(hole.cupX - (active()?.ball.x ?? TEE_X)) / 10),
       fastForward,
-      results: results.slice(),
-      lastResult
+      players: players.map((p) => ({
+        label: p.label,
+        strokes: p.strokes,
+        holed: p.holed,
+        total: p.results.reduce((s, r) => s + r.points, 0),
+        strokeTotal: p.results.reduce((s, r) => s + r.strokes, 0),
+        results: p.results.slice()
+      })),
+      lastHole,
+      strokes: me.strokes,
+      total: me.results.reduce((s, r) => s + r.points, 0),
+      results: me.results.slice()
     });
   }
 
@@ -249,13 +478,13 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
   const viewW = () => w / scale;
   const toScreenX = (x: number) => (x - camX) * scale;
   const toScreenY = (y: number) => h - (WORLD_H - y) * scale;
-  const toWorld = (sx: number, sy: number) => ({ x: sx / scale + camX, y: WORLD_H - (h - sy) / scale });
 
   function targetCam() {
     const vw = viewW();
     if (hole.width <= vw) return (hole.width - vw) / 2;
-    const lead = phase === "aim" ? Math.sign(hole.cupX - ball.x) * vw * 0.12 : 0;
-    return Math.min(Math.max(ball.x + lead - vw / 2, 0), hole.width - vw);
+    const b = active()?.ball ?? { x: TEE_X };
+    const lead = phase === "aim" ? Math.sign(hole.cupX - b.x) * vw * 0.12 : 0;
+    return Math.min(Math.max(b.x + lead - vw / 2, 0), hole.width - vw);
   }
 
   function resize() {
@@ -269,166 +498,90 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     camX = targetCam();
   }
 
-  // ---- shooting ----
-  function launchVelocity() {
-    let angle = aim.angle;
-    if (club === "putter") {
-      // Keep putts close to the ground, either direction.
-      const left = Math.cos(angle) < 0;
-      const lift = left ? -(Math.PI + angle) : -angle;
-      const clamped = Math.max(-0.2, Math.min(PUTTER_MAX_LIFT, lift));
-      angle = left ? -Math.PI + clamped : -clamped;
+  // ---- turns ----
+
+  /** Golf order: whoever is farthest from the pin plays next. You break ties. */
+  function pickTurn() {
+    let next = -1;
+    let far = -1;
+    players.forEach((p, i) => {
+      if (p.holed) return;
+      const d = Math.abs(hole.cupX - p.ball.x);
+      if (d > far + 0.5) {
+        far = d;
+        next = i;
+      }
+    });
+    return next;
+  }
+
+  function beginTurn() {
+    const next = pickTurn();
+    if (next < 0) {
+      finishHole();
+      return;
     }
-    const v = CLUB_SPEED[club] * aim.power;
-    return { vx: Math.cos(angle) * v, vy: Math.sin(angle) * v, angle };
+    turn = next;
+    const p = active();
+    phase = "aim";
+    fastForward = false;
+    facing = hole.cupX >= p.ball.x ? 1 : -1;
+    club = suggestClub(hole.cupX - p.ball.x);
+    aim = { angle: club === "putter" ? (facing > 0 ? 0 : -Math.PI) : facing > 0 ? -Math.PI / 4 : (-3 * Math.PI) / 4, power: 0 };
+    if (p.bot) {
+      botStatus = "thinking";
+      botSearch = planShot(hole, p.ball.x, p.ball.y);
+      botPlan = null;
+      botSwingAt = performance.now() + 450; // a beat, so the turn change reads
+    } else botStatus = null;
+    emit();
   }
 
   function shoot() {
+    const p = active();
     if (phase !== "aim" || aim.power < 0.04) return;
-    const { vx, vy } = launchVelocity();
-    ball.vx = vx;
-    ball.vy = vy;
-    lastRest = { x: ball.x, y: ball.y };
-    strokes++;
+    const b = newBall(p.ball.x, p.ball.y, club, aim.angle, aim.power);
+    p.lastRest = { x: p.ball.x, y: p.ball.y };
+    p.ball = b;
+    p.strokes++;
+    p.trail = [];
     phase = "flight";
-    restTimer = 0;
-    flightTime = 0;
-    firstImpact = true;
-    trail = [];
-    fastForward = false;
     aiming = false;
+    if (p.bot) botStatus = null;
     emit();
   }
 
   function finishHole() {
-    const points = holePoints(hole.par, strokes);
-    const result = { par: hole.par, strokes, points };
-    results.push(result);
-    lastResult = { ...result, name: scoreName(hole.par, strokes) };
+    const rows = players.map((p) => {
+      const points = holePoints(hole.par, p.strokes);
+      p.results.push({ par: hole.par, strokes: p.strokes, points });
+      return { label: p.label, strokes: p.strokes, points, name: p.strokes > MAX_STROKES ? "Picked up" : scoreName(hole.par, p.strokes) };
+    });
+    lastHole = { par: hole.par, rows };
     phase = holeIndex === HOLES - 1 ? "done" : "holed";
     fastForward = false;
+    botStatus = null;
     emit();
   }
 
-  function comeToRest() {
-    phase = "aim";
-    fastForward = false;
-    if (strokes >= MAX_STROKES) {
-      flash("Stroke limit. Picking up.");
-      strokes = MAX_STROKES + 1;
-      finishHole();
-      return;
+  function endShot(result: StepResult) {
+    const p = active();
+    p.ball.vx = p.ball.vy = 0;
+    if (result === "sunk") {
+      p.holed = true;
+      if (mode === "bot") flash(`${p.label === "You" ? "You" : "The bot"} holed out in ${p.strokes}.`);
+    } else if (result === "oob") {
+      p.strokes++;
+      flash(`${p.bot ? "Bot: out" : "Out"} of bounds. One stroke penalty.`);
+      p.ball.x = p.lastRest.x;
+      p.ball.y = p.lastRest.y;
     }
-    facing = hole.cupX >= ball.x ? 1 : -1;
-    club = suggestClub(hole.cupX - ball.x);
-    const toward = facing > 0 ? 0 : Math.PI;
-    aim = { angle: club === "putter" ? -toward : facing > 0 ? -Math.PI / 4 : (-3 * Math.PI) / 4, power: 0 };
-    emit();
-  }
-
-  // ---- physics ----
-  function collide(dt: number) {
-    let contact: { nx: number; ny: number; kind: Surface } | null = null;
-    for (let pass = 0; pass < 2; pass++) {
-      const i0 = Math.max(0, Math.floor((ball.x - R) / STEP) - 1);
-      const i1 = Math.min(hole.ys.length - 2, Math.ceil((ball.x + R) / STEP) + 1);
-      let best = 0;
-      let bn = { nx: 0, ny: -1 };
-      let bk: Surface = 0;
-      for (let i = i0; i <= i1; i++) {
-        const ax = i * STEP;
-        const ay = hole.ys[i];
-        const bx = ax + STEP;
-        const by = hole.ys[i + 1];
-        const ex = bx - ax;
-        const ey = by - ay;
-        const t = Math.max(0, Math.min(1, ((ball.x - ax) * ex + (ball.y - ay) * ey) / (ex * ex + ey * ey)));
-        const qx = ax + ex * t;
-        const qy = ay + ey * t;
-        let dx = ball.x - qx;
-        let dy = ball.y - qy;
-        let dist = Math.hypot(dx, dy);
-        // Below the surface counts as inside, even when the centre went through.
-        const below = ball.y > groundAt(hole, ball.x);
-        if (dist < 1e-6 || below) {
-          const len = Math.hypot(ex, ey);
-          dx = ey / len;
-          dy = -ex / len;
-          dist = below ? -Math.abs(ball.y - groundAt(hole, ball.x)) : 0;
-        } else {
-          dx /= dist;
-          dy /= dist;
-        }
-        const pen = R - dist;
-        if (pen > best) {
-          best = pen;
-          bn = { nx: dx, ny: dy };
-          bk = hole.kinds[i] as Surface;
-        }
-      }
-      if (best <= 0) break;
-      ball.x += bn.nx * best;
-      ball.y += bn.ny * best;
-      contact = { ...bn, kind: bk };
+    if (!p.holed && p.strokes >= MAX_STROKES) {
+      flash(`${p.bot ? "The bot picks" : "Stroke limit. Picking"} up.`);
+      p.strokes = MAX_STROKES + 1;
+      p.holed = true;
     }
-    if (!contact) return false;
-
-    const { nx, ny, kind } = contact;
-    const vn = ball.vx * nx + ball.vy * ny;
-    let tx = ball.vx - vn * nx;
-    let ty = ball.vy - vn * ny;
-    if (vn < -35) {
-      const e = RESTITUTION[kind] * (club === "wedge" && firstImpact ? 0.6 : 1);
-      const f = Math.min(0.9, IMPACT_FRICTION[kind] + (club === "wedge" && firstImpact ? 0.35 : 0));
-      firstImpact = false;
-      tx *= 1 - f;
-      ty *= 1 - f;
-      ball.vx = tx - e * vn * nx;
-      ball.vy = ty - e * vn * ny;
-    } else {
-      // Rolling: drop the normal part, slow down along the surface.
-      const s = Math.hypot(tx, ty);
-      const ns = Math.max(0, s - ROLL_DECEL[kind] * dt);
-      const k = s > 1e-6 ? ns / s : 0;
-      ball.vx = tx * k;
-      ball.vy = ty * k;
-    }
-    return true;
-  }
-
-  function physics(dt: number) {
-    ball.vy += G * dt;
-    ball.x += ball.vx * dt;
-    ball.y += ball.vy * dt;
-    flightTime += dt;
-
-    if (ball.x < -R * 2 || ball.x > hole.width + R * 2) {
-      strokes++;
-      flash("Out of bounds. One stroke penalty.");
-      ball.x = lastRest.x;
-      ball.y = lastRest.y;
-      ball.vx = ball.vy = 0;
-      comeToRest();
-      return;
-    }
-
-    const touching = collide(dt);
-
-    if (Math.abs(ball.x - hole.cupX) < CUP_HALF - 1 && ball.y > hole.rimY + R * 0.6) {
-      ball.x = hole.cupX;
-      ball.y = hole.rimY + CUP_DEPTH - R;
-      ball.vx = ball.vy = 0;
-      finishHole();
-      return;
-    }
-
-    const speed = Math.hypot(ball.vx, ball.vy);
-    if (touching && speed < 9) restTimer += dt;
-    else restTimer = 0;
-    if (restTimer > 0.25 || flightTime > 45) {
-      ball.vx = ball.vy = 0;
-      comeToRest();
-    }
+    beginTurn();
   }
 
   // ---- input ----
@@ -448,6 +601,8 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
 
+  const humanAiming = () => phase === "aim" && !active().bot;
+
   const onDown = (e: PointerEvent) => {
     if (!inputOn) return;
     if (phase === "flight") {
@@ -455,7 +610,7 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
       emit();
       return;
     }
-    if (phase !== "aim") return;
+    if (!humanAiming()) return;
     canvas.setPointerCapture(e.pointerId);
     aiming = true;
     dragStart = pointerPos(e);
@@ -479,28 +634,28 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
   };
   const onCancel = () => {
     aiming = false;
-    aim.power = 0;
+    if (humanAiming()) aim.power = 0;
   };
 
   const onKey = (e: KeyboardEvent) => {
-    const target = e.target as HTMLElement | null;
     if (!inputOn) return;
+    const target = e.target as HTMLElement | null;
     if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
     if (target && /^(BUTTON|A)$/.test(target.tagName) && (e.key === " " || e.key === "Enter")) return;
     if (document.querySelector("dialog[open]")) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    const clubKey = CLUBS.find((c) => c.key === e.key);
-    if (clubKey && phase === "aim") {
-      setClub(clubKey.id);
-      return;
-    }
-    if (phase === "flight" && (e.key === "f" || e.key === " ")) {
+    if (phase === "flight" && (e.key === "f" || e.key === "F" || e.key === " ")) {
       e.preventDefault();
       fastForward = !fastForward;
       emit();
       return;
     }
-    if (phase !== "aim") return;
+    if (!humanAiming()) return;
+    const clubKey = CLUBS.find((c) => c.key === e.key);
+    if (clubKey) {
+      setClub(clubKey.id);
+      return;
+    }
     const stepA = e.shiftKey ? 0.01 : 0.035;
     if (e.key === "ArrowLeft") aim.angle -= stepA * (Math.cos(aim.angle) >= 0 ? 1 : -1);
     else if (e.key === "ArrowRight") aim.angle += stepA * (Math.cos(aim.angle) >= 0 ? 1 : -1);
@@ -513,6 +668,46 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     facing = Math.cos(aim.angle) >= 0 ? 1 : -1;
   };
 
+  // ---- bot ----
+  function runBot(t: number) {
+    const p = active();
+    if (phase !== "aim" || !p?.bot) return;
+    if (botSearch) {
+      const until = performance.now() + 8; // a slice of each frame
+      while (performance.now() < until) {
+        const r = botSearch.next();
+        if (r.done) {
+          const noise = BOT_NOISE[difficulty];
+          botPlan = {
+            ...r.value,
+            angle: r.value.angle + gauss() * noise.angle,
+            power: Math.max(0.03, Math.min(1, r.value.power * (1 + gauss() * noise.power)))
+          };
+          botSearch = null;
+          botSwingAt = Math.max(botSwingAt, t) + 900;
+          club = botPlan.club;
+          aim.angle = botPlan.angle;
+          aim.power = 0;
+          facing = Math.cos(aim.angle) >= 0 ? 1 : -1;
+          botStatus = "swinging";
+          emit();
+          break;
+        }
+      }
+      return;
+    }
+    if (botPlan) {
+      // Wind up the swing on screen, then hit.
+      const left = botSwingAt - t;
+      aim.power = botPlan.power * Math.min(1, Math.max(0, 1 - left / 800));
+      if (left <= 0) {
+        aim.power = botPlan.power;
+        botPlan = null;
+        shoot();
+      }
+    }
+  }
+
   // ---- drawing ----
   function drawSky(t: number) {
     const g = ctx.createLinearGradient(0, 0, 0, h);
@@ -522,13 +717,12 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     ctx.fillRect(0, 0, w, h);
 
     const par = camX * scale * 0.15;
-    for (const s of stars) {
-      const sx = (((s.x * w * 1.6 - par) % (w * 1.6)) + w * 1.6) % (w * 1.6);
+    for (const st of stars) {
+      const sx = (((st.x * w * 1.6 - par) % (w * 1.6)) + w * 1.6) % (w * 1.6);
       if (sx > w) continue;
-      const tw = reduceMotion ? 0.8 : 0.6 + 0.4 * Math.sin(t / 900 + s.tw);
-      ctx.globalAlpha = tw;
+      ctx.globalAlpha = reduceMotion ? 0.8 : 0.6 + 0.4 * Math.sin(t / 900 + st.tw);
       ctx.fillStyle = "#e8ecf5";
-      ctx.fillRect(sx, s.y * h * 0.75, s.s, s.s);
+      ctx.fillRect(sx, st.y * h * 0.75, st.s, st.s);
     }
     ctx.globalAlpha = 1;
 
@@ -549,7 +743,6 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     ctx.ellipse(ex - er * 0.2, ey - er * 0.1, er * 0.35, er * 0.22, 0.6, 0, Math.PI * 2);
     ctx.ellipse(ex + er * 0.35, ey + er * 0.35, er * 0.22, er * 0.14, -0.3, 0, Math.PI * 2);
     ctx.fill();
-    // Night side
     ctx.fillStyle = "rgba(3,4,10,0.55)";
     ctx.beginPath();
     ctx.arc(ex, ey, er, -Math.PI / 2.4, Math.PI - Math.PI / 2.4);
@@ -616,32 +809,39 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     ctx.fillText(String(holeIndex + 1), cx + 10 * scale, poleTop + 19 * scale);
   }
 
-  function drawAstronaut() {
-    if (phase !== "aim") return;
-    const bx = toScreenX(ball.x - facing * 16);
-    const gy = toScreenY(groundAt(hole, ball.x - facing * 16));
-    const s = Math.max(0.55, scale);
+  function drawAstronaut(p: Player) {
+    const bx = toScreenX(p.ball.x - facing * 16);
+    const gy = toScreenY(groundAt(hole, p.ball.x - facing * 16));
+    const sc = Math.max(0.55, scale);
     ctx.save();
     ctx.translate(bx, gy);
-    ctx.scale(facing * s, s);
-    // legs
-    ctx.fillStyle = "#e9ebef";
+    ctx.scale(facing * sc, sc);
+    const suit = p.bot ? "#e8d8bd" : "#f1f2f5";
+    ctx.fillStyle = p.bot ? "#d9c8ab" : "#e9ebef";
     ctx.fillRect(-9, -22, 7, 22);
     ctx.fillRect(2, -22, 7, 22);
-    // body + backpack
-    ctx.fillStyle = "#c9ccd3";
+    ctx.fillStyle = p.bot ? "#bba98b" : "#c9ccd3";
     ctx.fillRect(-16, -46, 8, 20);
-    ctx.fillStyle = "#f1f2f5";
+    ctx.fillStyle = suit;
     ctx.fillRect(-11, -50, 22, 30);
-    // helmet + visor
     ctx.beginPath();
     ctx.arc(0, -60, 12, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#d6a74a";
+    ctx.fillStyle = p.visor;
     ctx.beginPath();
     ctx.ellipse(4, -60, 7, 6, 0, 0, Math.PI * 2);
     ctx.fill();
-    // club: swings back with power
+    if (p.bot) {
+      // antenna
+      ctx.strokeStyle = suit;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-4, -71);
+      ctx.lineTo(-8, -82);
+      ctx.stroke();
+      ctx.fillStyle = "#f0b45b";
+      ctx.fillRect(-10, -85, 4, 4);
+    }
     const back = aim.power * 1.9;
     ctx.strokeStyle = "#9aa0a8";
     ctx.lineWidth = 2;
@@ -653,19 +853,18 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     ctx.restore();
   }
 
-  function drawBall() {
-    // trail
-    ctx.fillStyle = "rgba(230,234,242,0.35)";
-    for (let i = 0; i < trail.length; i += 3) {
-      const p = trail[i];
-      ctx.fillRect(toScreenX(p.x) - 1, toScreenY(p.y) - 1, 2, 2);
+  function drawBall(p: Player, isActive: boolean) {
+    if (p.holed && !isActive) return;
+    ctx.fillStyle = p.bot ? "rgba(240,180,91,0.4)" : "rgba(230,234,242,0.35)";
+    for (let i = 0; i < p.trail.length; i += 3) {
+      const q = p.trail[i];
+      ctx.fillRect(toScreenX(q.x) - 1, toScreenY(q.y) - 1, 2, 2);
     }
-    const sx = toScreenX(ball.x);
-    const sy = toScreenY(ball.y);
+    const sx = toScreenX(p.ball.x);
+    const sy = toScreenY(p.ball.y);
     const r = Math.max(3, R * scale);
     if (sy < -r) {
-      // Above the top of the screen: point at it.
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.moveTo(sx, 6);
       ctx.lineTo(sx - 6, 16);
@@ -674,26 +873,36 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
       ctx.fill();
       return;
     }
-    const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 3);
-    glow.addColorStop(0, "rgba(255,255,255,0.35)");
-    glow.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = glow;
-    ctx.fillRect(sx - r * 3, sy - r * 3, r * 6, r * 6);
-    ctx.fillStyle = "#ffffff";
+    if (isActive) {
+      const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 3);
+      glow.addColorStop(0, p.bot ? "rgba(240,180,91,0.4)" : "rgba(255,255,255,0.35)");
+      glow.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(sx - r * 3, sy - r * 3, r * 6, r * 6);
+    }
+    ctx.fillStyle = p.color;
     ctx.beginPath();
     ctx.arc(sx, sy, r, 0, Math.PI * 2);
     ctx.fill();
+    if (mode === "bot" && !isActive) {
+      ctx.font = "10px ui-monospace, Menlo, monospace";
+      ctx.textAlign = "center";
+      ctx.fillStyle = p.bot ? "rgba(240,180,91,0.85)" : "rgba(230,234,242,0.8)";
+      ctx.fillText(p.label, sx, sy - r - 6);
+      ctx.textAlign = "left";
+    }
   }
 
   function drawAim() {
-    if (phase !== "aim" || aim.power <= 0) return;
-    const { vx, vy } = launchVelocity();
-    let x = ball.x;
-    let y = ball.y;
+    const p = active();
+    if (phase !== "aim" || aim.power <= 0 || !p) return;
+    const { vx, vy } = launch(club, aim.angle, aim.power);
+    let x = p.ball.x;
+    let y = p.ball.y;
     let px = vx;
     let py = vy;
     const dt = 1 / 30;
-    ctx.fillStyle = "#86a8f6";
+    ctx.fillStyle = p.bot ? "#f0b45b" : "#86a8f6";
     for (let i = 0; i < 22; i++) {
       py += G * dt;
       x += px * dt;
@@ -706,12 +915,11 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     }
     ctx.globalAlpha = 1;
 
-    // power bar
-    const bx = toScreenX(ball.x) - 30;
-    const by = toScreenY(ball.y) + 18;
+    const bx = toScreenX(p.ball.x) - 30;
+    const by = toScreenY(p.ball.y) + 18;
     ctx.fillStyle = "rgba(255,255,255,0.18)";
     ctx.fillRect(bx, by, 60, 4);
-    ctx.fillStyle = aim.power > 0.95 ? "#f0b45b" : "#86a8f6";
+    ctx.fillStyle = p.bot ? "#f0b45b" : aim.power > 0.95 ? "#f0b45b" : "#86a8f6";
     ctx.fillRect(bx, by, 60 * aim.power, 4);
     ctx.font = "11px ui-monospace, Menlo, monospace";
     ctx.fillStyle = "rgba(230,234,242,0.8)";
@@ -733,7 +941,7 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     ctx.fill();
     ctx.font = "11px ui-monospace, Menlo, monospace";
     ctx.textAlign = right ? "right" : "left";
-    ctx.fillText(`${Math.round(Math.abs(hole.cupX - ball.x) / 10)} m`, x + (right ? -16 : 16), y + 4);
+    ctx.fillText(`${Math.round(Math.abs(hole.cupX - (active()?.ball.x ?? TEE_X)) / 10)} m`, x + (right ? -16 : 16), y + 4);
     ctx.textAlign = "left";
   }
 
@@ -750,58 +958,67 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
   let raf = 0;
   let last = performance.now();
   let acc = 0;
-  const FIXED = 1 / 240;
+  let lastEmit = 0;
 
   function frame(t: number) {
     const dt = Math.min(0.05, (t - last) / 1000);
     last = t;
 
-    if (phase === "flight") {
-      acc += dt * (fastForward ? 4 : 1);
-      let guard = 0;
-      while (acc >= FIXED && phase === "flight" && guard++ < 1000) {
-        physics(FIXED);
-        acc -= FIXED;
-      }
+    if (players.length) {
       if (phase === "flight") {
-        trail.push({ x: ball.x, y: ball.y });
-        if (trail.length > 240) trail.shift();
-        if (Math.round(t / 250) % 2 === 0) emit();
-      }
-    } else acc = 0;
+        const p = active();
+        acc += dt * (fastForward ? 4 : 1);
+        let guard = 0;
+        while (acc >= FIXED && phase === "flight" && guard++ < 1000) {
+          const r = stepBall(hole, p.ball, FIXED);
+          acc -= FIXED;
+          if (r !== "move") {
+            endShot(r);
+            break;
+          }
+        }
+        if (phase === "flight") {
+          p.trail.push({ x: p.ball.x, y: p.ball.y });
+          if (p.trail.length > 240) p.trail.shift();
+          if (t - lastEmit > 250) {
+            lastEmit = t;
+            emit();
+          }
+        }
+      } else acc = 0;
+      runBot(t);
 
-    const target = targetCam();
-    camX += (target - camX) * Math.min(1, dt * (phase === "flight" ? 5 : 3));
+      const target = targetCam();
+      camX += (target - camX) * Math.min(1, dt * (phase === "flight" ? 5 : 3));
+    }
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawSky(t);
-    drawTerrain();
-    drawAstronaut();
-    drawAim();
-    drawBall();
-    drawPinMarker();
-    drawMessage(t);
+    if (players.length) {
+      drawTerrain();
+      players.forEach((p, i) => i !== turn && drawBall(p, false));
+      if (phase === "aim" && active()) drawAstronaut(active());
+      drawAim();
+      if (active()) drawBall(active(), true);
+      drawPinMarker();
+      drawMessage(t);
+    }
     raf = requestAnimationFrame(frame);
   }
 
   function setClub(c: Club) {
-    if (phase !== "aim") return;
+    if (!humanAiming()) return;
     club = c;
     if (c === "putter") aim.angle = facing > 0 ? 0 : -Math.PI;
     emit();
   }
 
-  function nextHole() {
-    if (phase !== "holed") return;
-    holeIndex++;
-    lastResult = null;
-    resetHole();
-  }
-
-  function restart() {
+  function newRound(m: Mode, d: Difficulty) {
+    mode = m;
+    difficulty = d;
     holeIndex = 0;
-    results.length = 0;
-    lastResult = null;
+    lastHole = null;
+    players = makePlayers();
     resetHole();
   }
 
@@ -813,16 +1030,29 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
   canvas.addEventListener("pointercancel", onCancel);
   window.addEventListener("keydown", onKey);
   resize();
-  resetHole();
+  newRound("solo", "medium"); // shows the first hole behind the intro card
   raf = requestAnimationFrame(frame);
 
   return {
-    start() {
+    /** Starts a round. Called from the intro card. */
+    start(m: Mode = "solo", d: Difficulty = "medium") {
+      newRound(m, d);
       inputOn = true;
     },
+    /** Stops reacting to input, e.g. while the intro card is back up. */
+    pause() {
+      inputOn = false;
+    },
     setClub,
-    nextHole,
-    restart,
+    nextHole() {
+      if (phase !== "holed") return;
+      holeIndex++;
+      lastHole = null;
+      resetHole();
+    },
+    restart() {
+      newRound(mode, difficulty);
+    },
     toggleFastForward() {
       if (phase !== "flight") return;
       fastForward = !fastForward;

@@ -49,6 +49,10 @@ jobs:
         run: pnpm typecheck
 
       - name: Build static site
+        env:
+          # The Moon Golf leaderboard Worker (workers/leaderboard). Set as a repository variable;
+          # when it's empty the game still works and shows the board shipped in public/leaderboard.json.
+          NEXT_PUBLIC_LEADERBOARD_URL: ${{ vars.LEADERBOARD_URL }}
         run: pnpm build
 
       - name: Add Paper Desk (/papers)
