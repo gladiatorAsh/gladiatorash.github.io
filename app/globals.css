@@ -87,6 +87,24 @@
 }
 
 /* ---- Layout ---- */
+/* Large screens: the citadel docks into a corner mini-map (components/citadel-stage.tsx);
+   the content keeps clear of it unless the reader hides the map. */
+@media (min-width: 1024px) {
+  .with-dock {
+    padding-right: calc(clamp(260px, 21vw, 400px) + 2rem);
+  }
+  :root[data-map="hidden"] .with-dock {
+    padding-right: 0;
+  }
+  .citadel-frame[data-docked] {
+    border: 1px solid var(--color-ink);
+  }
+  .citadel-frame[data-hidden] {
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
 .frame {
   width: 100%;
   max-width: 72rem;

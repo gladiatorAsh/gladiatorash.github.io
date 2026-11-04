@@ -1,7 +1,8 @@
 import { ArrowUpRight } from "lucide-react";
 import { ArchitectureGallery } from "@/components/architecture-gallery";
 import { CareerTimeline } from "@/components/career-timeline";
-import { Citadel, SceneDirector } from "@/components/citadel";
+import { SceneDirector } from "@/components/citadel";
+import { CitadelStage } from "@/components/citadel-stage";
 import { CopyEmailButton } from "@/components/copy-email-button";
 import { ReadingToggle, TopBar } from "@/components/top-bar";
 import { agentAnchor, meshAnchor, projectAnchor } from "@/lib/citadel";
@@ -24,13 +25,12 @@ export default function Home() {
   return (
     <>
       <TopBar />
-      <div className="lg:grid lg:grid-cols-[minmax(0,46rem)_minmax(0,1fr)]">
-        {/* The citadel stays in view while the page scrolls past it. */}
-        <div className="sticky top-14 z-20 h-[38svh] border-b border-rule bg-paper lg:order-2 lg:h-[calc(100svh-3.5rem)] lg:border-b-0 lg:border-l">
-          <Citadel />
-        </div>
+      <div>
+        {/* Small screens: pinned under the header. Large screens: a full-width band that docks into a corner mini-map. */}
+        <CitadelStage />
 
-        <main id="main" className="min-w-0 lg:order-1">
+        <main id="main" className="with-dock min-w-0">
+          <div className="mx-auto max-w-[76rem]">
           <Hero />
 
           <Chapter id="agentmesh" title="AgentMesh: AI for mechanical engineers">
@@ -204,6 +204,7 @@ export default function Home() {
           <footer className="border-t border-rule px-4 py-8 text-graphite md:px-10">
             <p className="mono m-0">© {new Date().getFullYear()} {profile.name}. Static site, rebuilt daily with the latest papers.</p>
           </footer>
+          </div>
         </main>
       </div>
       <SceneDirector />
@@ -213,7 +214,8 @@ export default function Home() {
 
 function Hero() {
   return (
-    <section id="home" data-scene="home" className="px-4 pb-14 pt-10 md:px-10 lg:pt-16">
+    <section id="home" data-scene="home" className="px-4 pb-14 pt-10 md:px-10 lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-x-14 lg:pt-14">
+      <div className="lg:col-start-1">
       <div className="border-t border-ink pt-3">
         <h1 className="wordmark m-0">
           Ashutosh
@@ -226,7 +228,12 @@ function Hero() {
         {profile.summary} Today I build agents that do real work for engineers: they read documents, find the evidence, drive CAD tools
         and know when to ask a person. Most of my fifteen years of code was written by hand.
       </p>
-      <dl className="mt-8 border-t border-rule">
+      <p className="measure mt-4 text-graphite">
+        The citadel is a map of the site. The keep in the middle is me; the camera moves to each building as you read.
+      </p>
+      </div>
+      <div className="lg:col-start-2 lg:row-start-1 lg:pt-3">
+      <dl className="mt-8 border-t border-rule lg:mt-0">
         {[
           ["Role", "Applied AI Engineer and Team Lead"],
           ["Focus", "Agentic AI and multi-agent systems, MCP tools, RAG copilots, document intelligence"],
@@ -241,9 +248,6 @@ function Hero() {
           </div>
         ))}
       </dl>
-      <p className="measure mt-4 text-graphite">
-        The citadel beside this text is a map of the site. The keep in the middle is me; the camera moves to each building as you read.
-      </p>
       <dl className="mt-8 grid grid-cols-2 gap-px border border-rule bg-rule sm:grid-cols-4">
         {[
           { v: "70K+", l: "documents a month through one agent pipeline" },
@@ -274,6 +278,7 @@ function Hero() {
           </a>
         </div>
       </div>
+      </div>
     </section>
   );
 }
@@ -295,7 +300,12 @@ function Chapter({ id, title, children }: { id: string; title: string; children:
 
 function AgentProject({ project, num, anchor }: { project: (typeof agenticProjects)[number]; num: string; anchor: string }) {
   return (
-    <article id={anchor} data-scene={anchor} className="border-t border-rule py-10">
+    <article
+      id={anchor}
+      data-scene={anchor}
+      className="flex flex-col border-t border-rule py-10 xl:grid xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] xl:grid-rows-[auto_1fr] xl:gap-x-12"
+    >
+      <div className="xl:col-start-1 xl:row-start-1">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <h3 className="m-0 text-2xl font-medium tracking-[-0.025em]">
           <span className="mono mr-3 align-middle text-graphite">{num}</span>
@@ -306,7 +316,9 @@ function AgentProject({ project, num, anchor }: { project: (typeof agenticProjec
         </p>
       </div>
       <p className="mt-5 max-w-[26ch] text-[clamp(1.4rem,2.4vw,1.9rem)] leading-[1.1] tracking-[-0.03em]">{project.headline}</p>
-      <p className="mono read-plain m-0 mt-5 text-graphite">Plain English</p>
+      </div>
+      <div className="xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:pt-1">
+      <p className="mono read-plain m-0 mt-5 text-graphite xl:mt-0">Plain English</p>
             <div className="read-plain measure mt-2 flex flex-col gap-4">
         {project.plain.map((t) => (
           <p key={t} className="m-0">
@@ -314,7 +326,7 @@ function AgentProject({ project, num, anchor }: { project: (typeof agenticProjec
           </p>
         ))}
       </div>
-      <p className="mono read-technical m-0 mt-5 text-graphite">Technical</p>
+      <p className="mono read-technical m-0 mt-5 text-graphite xl:mt-0">Technical</p>
             <div className="read-technical measure mt-2 flex flex-col gap-4">
         {project.technical.map((t) => (
           <p key={t} className="m-0">
@@ -336,7 +348,8 @@ function AgentProject({ project, num, anchor }: { project: (typeof agenticProjec
           </li>
         ))}
       </ul>
-      <div className="mt-7 flex flex-wrap items-end justify-between gap-6">
+      </div>
+      <div className="mt-7 flex flex-wrap items-end justify-between gap-6 xl:col-start-1 xl:row-start-2 xl:flex-col xl:items-start xl:justify-start">
         <dl className={`m-0 flex gap-8 ${project.proof.length ? "" : "hidden"}`}>
           {project.proof.map((p) => (
             <div key={p.label} className="flex flex-col-reverse">
