@@ -168,7 +168,11 @@ export default function Home() {
               <a className="link" href="/news/">
                 daily news digest
               </a>{" "}
-              covering tech, India, Canada and the US.
+              covering tech, India, Canada and the US. Need a break? Play a round of{" "}
+              <a className="link" href="/play/">
+                Moon Golf
+              </a>
+              , nine holes in one-sixth gravity with a new course every day.
             </p>
           </Chapter>
 
