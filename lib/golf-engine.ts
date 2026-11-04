@@ -301,53 +301,92 @@ export function simulateShot(hole: Hole, x: number, y: number, club: Club, angle
 
 // ---------- the bot ----------
 
-export const BOT_NOISE: Record<Difficulty, { angle: number; power: number }> = {
-  easy: { angle: (9 * Math.PI) / 180, power: 0.2 },
-  medium: { angle: (5 * Math.PI) / 180, power: 0.11 },
-  hard: { angle: (3 * Math.PI) / 180, power: 0.065 }
+/**
+ * How the bot falls short, per level. It plans with the real physics, so every level has to be held
+ * back on purpose: it looks at fewer options, settles for a shot that is merely "close enough",
+ * and then mis-hits it.
+ *   slack   — any candidate finishing within this share of the remaining distance of the best one may be chosen
+ *   refine  — whether it fine-tunes the chosen shot
+ *   clubs   — how many clubs it considers
+ *   angle/power — aim error (radians, and fraction of power) added at the swing
+ */
+export const BOT_SKILL: Record<Difficulty, { slack: number; refine: boolean; clubs: number; angle: number; power: number }> = {
+  easy: { slack: 0.45, refine: false, clubs: 1, angle: (9 * Math.PI) / 180, power: 0.2 },
+  medium: { slack: 0.35, refine: false, clubs: 2, angle: (8.5 * Math.PI) / 180, power: 0.19 },
+  hard: { slack: 0.2, refine: false, clubs: 3, angle: (6.5 * Math.PI) / 180, power: 0.14 }
 };
 
 type Plan = { club: Club; angle: number; power: number; cost: number };
 
 /**
- * Searches club, launch angle and power by simulating each candidate on the real terrain, keeping
- * the one that finishes nearest the cup. A generator so the search can be spread over frames.
+ * Searches club, launch angle and power by simulating each candidate on the real terrain, then picks
+ * one of the "good enough" candidates for the level. A generator so the search can be spread over
+ * frames.
  */
-export function* planShot(hole: Hole, x: number, y: number): Generator<void, Plan> {
+export function* planShot(hole: Hole, x: number, y: number, level: Difficulty = "medium", rand: () => number = Math.random): Generator<void, Plan> {
+  const skill = BOT_SKILL[level];
+  const dist = Math.abs(hole.cupX - x);
   const dir = hole.cupX >= x ? 1 : -1;
   const toward = (elev: number) => (dir > 0 ? -elev : -Math.PI + elev);
   const first = suggestClub(hole.cupX - x);
   const order: Club[] = ["driver", "iron", "wedge", "putter"];
   const fi = order.indexOf(first);
-  const clubs = Array.from(new Set([first, order[Math.max(0, fi - 1)], order[Math.min(3, fi + 1)]]));
+  // The club for the distance, then one longer, then one shorter.
+  const preferred = Array.from(new Set([first, order[Math.max(0, fi - 1)], order[Math.min(3, fi + 1)]]));
+  // Shots that finish near either end of the hole are one mis-hit from out of bounds; avoid them.
   const cost = (r: ReturnType<typeof simulateShot>) =>
-    r.result === "sunk" ? -1 : r.result === "oob" ? 1e6 : Math.abs(r.x - hole.cupX) + (Math.abs(r.x - hole.cupX) < CUP_HALF * 3 ? 0 : 0);
+    r.result === "sunk" ? 0 : r.result === "oob" ? 5000 : Math.abs(r.x - hole.cupX) + (r.x < 120 || r.x > hole.width - 120 ? 400 : 0);
 
-  let best: Plan = { club: first, angle: toward(Math.PI / 4), power: 0.5, cost: Infinity };
+  const POWERS = 24;
+  const tried: Plan[] = [];
   let n = 0;
-  for (const club of clubs) {
-    const elevs = club === "putter" ? [0, 0.05, 0.1] : [12, 20, 28, 36, 44, 52, 60, 68].map((d) => (d * Math.PI) / 180);
-    for (const e of elevs) {
-      for (let p = 0.06; p <= 1.0001; p += 0.04) {
-        const r = simulateShot(hole, x, y, club, toward(e), p);
-        const c = cost(r);
-        if (c < best.cost) best = { club, angle: toward(e), power: p, cost: c };
+  function* search(clubs: Club[]): Generator<void, void> {
+    for (const club of clubs) {
+      const elevs = club === "putter" ? [0, 0.05, 0.1] : [12, 20, 28, 36, 44, 52, 60, 68].map((d) => (d * Math.PI) / 180);
+      for (const e of elevs) {
+        const row: number[] = [];
+        for (let i = 0; i < POWERS; i++) {
+          row.push(cost(simulateShot(hole, x, y, club, toward(e), 0.06 + i * 0.04)));
+          if (++n % 12 === 0) yield;
+        }
+        // Judge each shot with its neighbours too, so it prefers shots that forgive a mis-hit.
+        for (let i = 0; i < POWERS; i++) {
+          const near = [row[i], row[Math.max(0, i - 1)], row[Math.min(POWERS - 1, i + 1)]];
+          tried.push({ club, angle: toward(e), power: 0.06 + i * 0.04, cost: row[i] * 0.5 + ((near[1] + near[2]) / 2) * 0.5 });
+        }
+      }
+    }
+  }
+  yield* search(preferred.slice(0, skill.clubs));
+  // Stuck (in a crater, say)? Then any club will do.
+  if (Math.min(...tried.map((t) => t.cost)) > dist * 0.85) yield* search(order.filter((c) => !preferred.slice(0, skill.clubs).includes(c)));
+
+  const bestCost = Math.min(...tried.map((t) => t.cost));
+  const slack = Math.max(4, skill.slack * dist);
+  const okay = tried.filter((t) => t.cost <= bestCost + slack);
+  let pick = okay[Math.floor(rand() * okay.length)];
+
+  if (skill.refine) {
+    const base = pick;
+    let bestRaw = Infinity;
+    for (let da = -3; da <= 3; da++) {
+      for (let dp = -0.02; dp <= 0.0201; dp += 0.005) {
+        const angle = base.angle + (da * 0.75 * Math.PI) / 180;
+        const power = Math.max(0.02, Math.min(1, base.power + dp));
+        const c = cost(simulateShot(hole, x, y, base.club, angle, power));
+        // Only take a refinement that isn't a knife-edge: its slightly harder twin must also hold up.
+        if (c < bestRaw && c < 5000) {
+          const twin = cost(simulateShot(hole, x, y, base.club, angle, Math.min(1, power * 1.06)));
+          if (twin < 5000) {
+            bestRaw = c;
+            pick = { club: base.club, angle, power, cost: c };
+          }
+        }
         if (++n % 12 === 0) yield;
       }
     }
   }
-  // Refine around the best candidate.
-  const base = best;
-  for (let da = -4; da <= 4; da++) {
-    for (let dp = -0.03; dp <= 0.0301; dp += 0.006) {
-      const angle = base.angle + ((da * 0.75) * Math.PI) / 180;
-      const power = Math.max(0.02, Math.min(1, base.power + dp));
-      const c = cost(simulateShot(hole, x, y, base.club, angle, power));
-      if (c < best.cost) best = { club: base.club, angle, power, cost: c };
-      if (++n % 12 === 0) yield;
-    }
-  }
-  return best;
+  return pick;
 }
 
 function gauss() {
@@ -530,7 +569,7 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     aim = { angle: club === "putter" ? (facing > 0 ? 0 : -Math.PI) : facing > 0 ? -Math.PI / 4 : (-3 * Math.PI) / 4, power: 0 };
     if (p.bot) {
       botStatus = "thinking";
-      botSearch = planShot(hole, p.ball.x, p.ball.y);
+      botSearch = planShot(hole, p.ball.x, p.ball.y, difficulty);
       botPlan = null;
       botSwingAt = performance.now() + 450; // a beat, so the turn change reads
     } else botStatus = null;
@@ -677,7 +716,7 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
       while (performance.now() < until) {
         const r = botSearch.next();
         if (r.done) {
-          const noise = BOT_NOISE[difficulty];
+          const noise = BOT_SKILL[difficulty];
           botPlan = {
             ...r.value,
             angle: r.value.angle + gauss() * noise.angle,

@@ -340,8 +340,12 @@ export function MoonGolf() {
                     ))}
                   </div>
                   <p className="m-0 mt-2 text-[0.82rem] leading-[1.5] text-[#ffffff]/60">
-                    You and the bot each play a ball. Whoever is farther from the pin hits next, and the fewest total strokes wins. The bot
-                    rehearses its shots on the same physics, then misses by a little, more on Easy.
+                    You and the bot each play a ball. Whoever is farther from the pin hits next, and the fewest total strokes wins.{" "}
+                    {difficulty === "easy"
+                      ? "Easy settles for rough shots and mis-hits often; it usually finishes well over par."
+                      : difficulty === "medium"
+                        ? "Medium plays sensible shots with a shaky swing; it finishes around par."
+                        : "Hard weighs more options and swings cleaner; expect it a few under par."}
                     {record.wins + record.losses + record.ties ? (
                       <span className="mono mt-1 block text-[0.72rem] text-[#ffffff]/50">
                         Your record: {record.wins}W {record.losses}L {record.ties}T
