@@ -1,4 +1,4 @@
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { ArchitectureGallery } from "@/components/architecture-gallery";
 import { CareerTimeline } from "@/components/career-timeline";
 import { SceneDirector } from "@/components/citadel";
@@ -6,6 +6,7 @@ import { CitadelStage } from "@/components/citadel-stage";
 import { CopyEmailButton } from "@/components/copy-email-button";
 import { ReadingToggle, TopBar } from "@/components/top-bar";
 import { agentAnchor, meshAnchor, projectAnchor } from "@/lib/citadel";
+import { caseStudyFor } from "@/lib/work";
 import {
   agenticProjects,
   agentMesh,
@@ -394,6 +395,11 @@ function CaseStudy({ project }: { project: (typeof projects)[number] }) {
           </li>
         ))}
       </ul>
+      {caseStudyFor(project.title) ? (
+        <a className="link mr-6 mt-5 inline-flex items-center gap-1" href={`/work/${caseStudyFor(project.title)!.slug}/`}>
+          Read the case study <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+        </a>
+      ) : null}
       {project.github ? (
         <a className="link mt-5 inline-flex items-center gap-1" href={project.github} target="_blank" rel="noreferrer">
           Source on GitHub <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />

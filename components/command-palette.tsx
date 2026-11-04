@@ -81,6 +81,7 @@ export default function CommandPalette() {
       { id: "theme", label: "Toggle light / dark theme", group: "Actions", icon: SunMoon, keywords: "mode appearance", run: toggleTheme },
       { id: "email", label: "Send an email", group: "Links", icon: Mail, keywords: "mailto contact", run: () => (window.location.href = `mailto:${profile.email}`) },
       { id: "papers", label: "Paper Desk: today's AI papers", group: "Links", icon: BookOpen, keywords: "research arxiv reading", run: () => (window.location.href = "/papers/") },
+      { id: "work", label: "Case studies: Crystal RAG, Agent Assist", group: "Links", icon: BookOpen, keywords: "case study crystal rag agent assist document pipeline architecture work", run: () => (window.location.href = "/work/") },
       { id: "news", label: "Today's news: tech, India, Canada, US", group: "Links", icon: Newspaper, keywords: "headlines daily digest india canada us tech", run: () => (window.location.href = "/news/") },
       { id: "play", label: "Play Moon Golf", group: "Links", icon: Gamepad2, keywords: "game arcade golf moon space fun break", run: () => (window.location.href = "/play/") },
       { id: "learn", label: "Learning paths", group: "Links", icon: BookOpen, keywords: "course study learn mcp a2a evals observability security context", run: () => (window.location.href = "/learn/") },
