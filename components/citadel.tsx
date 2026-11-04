@@ -50,7 +50,7 @@ function webglAvailable() {
 }
 
 /** The 3D citadel. Falls back to the flat system map when WebGL isn't available. */
-export function Citadel() {
+export function Citadel({ compact = false }: { compact?: boolean }) {
   const host = useRef<HTMLDivElement>(null);
   const labels = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<"loading" | "3d" | "flat">("loading");
@@ -91,7 +91,7 @@ export function Citadel() {
           <SystemMap />
         </div>
       ) : null}
-      <p className="mono pointer-events-none absolute bottom-3 left-4 m-0 text-graphite">
+      <p className={`mono pointer-events-none absolute bottom-3 left-4 m-0 text-graphite ${compact ? "hidden" : ""}`}>
         {mode === "3d" ? (
           <>
             <span className="hidden lg:inline">The citadel: each building is a part of this page. Click one to go there.</span>
