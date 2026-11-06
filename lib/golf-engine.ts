@@ -6,6 +6,8 @@
  * Ten world units are shown to the player as one metre.
  */
 
+import type { Sfx } from "./golf-sound";
+
 export type Club = "driver" | "iron" | "wedge" | "putter";
 export type Phase = "aim" | "flight" | "holed" | "done";
 type Surface = 0 | 1 | 2; // dust, rock, pad (the smooth area around the cup)
@@ -55,7 +57,17 @@ export type Hud = {
   strokes: number;
   total: number;
   results: HoleResult[];
+  paused: boolean;
+  /** Show the "how to hit" hint: the first shot of a round, until the player has dragged once. */
+  coach: boolean;
+  /** The human's current aim, for the fine-aim controls; null when it isn't their shot. */
+  aim: { power: number; loft: number } | null;
+  /** The whole hole as an SVG path in a 1000×60 box, plus the balls, the flag and the visible window. */
+  overview: { d: string; cup: number; view: [number, number]; balls: { x: number; y: number; bot: boolean; active: boolean }[] };
 };
+
+export const OVERVIEW_W = 1000;
+export const OVERVIEW_H = 60;
 
 export type Hole = { width: number; ys: Float32Array; kinds: Uint8Array; cupX: number; rimY: number; par: number };
 
@@ -175,7 +187,18 @@ function suggestClub(dx: number): Club {
 
 // ---------- physics (pure, so the bot can rehearse shots with it) ----------
 
-type Ball = { x: number; y: number; vx: number; vy: number; club: Club; firstImpact: boolean; rest: number; t: number };
+type Ball = {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  club: Club;
+  firstImpact: boolean;
+  rest: number;
+  t: number;
+  /** The last bounce, for sound; the live game reads and clears it. */
+  impact?: { kind: Surface; speed: number } | null;
+};
 type StepResult = "move" | "rest" | "sunk" | "oob";
 
 /** Launch velocity for a club, a direction and a power from 0 to 1. Putts are kept near the ground. */
@@ -245,6 +268,7 @@ function collide(hole: Hole, b: Ball, dt: number) {
     const e = RESTITUTION[kind] * (spin ? 0.6 : 1);
     const f = Math.min(0.9, IMPACT_FRICTION[kind] + (spin ? 0.35 : 0));
     b.firstImpact = false;
+    b.impact = { kind, speed: -vn };
     tx *= 1 - f;
     ty *= 1 - f;
     b.vx = tx - e * vn * nx;
@@ -397,6 +421,7 @@ function gauss() {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
+
 // ---------- the game ----------
 
 type Player = {
@@ -412,13 +437,39 @@ type Player = {
   trail: { x: number; y: number }[];
 };
 
-export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud: Hud) => void) {
+const CANCEL_PX = 12; // releasing this close to where you pressed cancels the shot
+const LOFT_MIN = -0.25;
+const LOFT_MAX = 1.48;
+
+/** Elevation above the horizon, whichever way the shot points. */
+const loftOf = (angle: number) => Math.atan2(-Math.sin(angle), Math.abs(Math.cos(angle)));
+const angleOf = (loft: number, facing: number) => (facing > 0 ? -loft : -Math.PI + loft);
+
+const vibrate = (ms: number) => {
+  try {
+    navigator.vibrate?.(ms);
+  } catch {
+    /* not supported */
+  }
+};
+
+export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud: Hud) => void, sfx?: Sfx) {
   const ctx = canvas.getContext("2d")!;
   const course = makeCourse(seed);
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const starRng = mulberry32(hashSeed(seed + "stars"));
   const stars = Array.from({ length: 220 }, () => ({ x: starRng(), y: starRng(), s: starRng() * 1.4 + 0.3, tw: starRng() * 6.28 }));
+
+  // The overview path for each hole, built once.
+  const overviewPaths = course.map((hl) => {
+    let d = "";
+    for (let i = 0; i < hl.ys.length; i += 5) d += `${i ? "L" : "M"}${((i * STEP) / hl.width) * OVERVIEW_W},${oy(hl.ys[i])}`;
+    return `${d}L${OVERVIEW_W},${OVERVIEW_H}L0,${OVERVIEW_H}Z`;
+  });
+  function oy(y: number) {
+    return Math.max(0, Math.min(OVERVIEW_H, ((y - 330) / (880 - 330)) * OVERVIEW_H)).toFixed(1);
+  }
 
   let mode: Mode = "solo";
   let difficulty: Difficulty = "medium";
@@ -431,6 +482,9 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
   let lastHole: HoleSummary | null = null;
   let fastForward = false;
   let inputOn = false;
+  let paused = false;
+  let pausedAt = 0;
+  let coached = false;
   let message: { text: string; until: number } | null = null;
 
   // Bot turn state.
@@ -439,11 +493,16 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
   let botPlan: Plan | null = null;
   let botSwingAt = 0;
 
-  // Aim state for whoever is up. Keyboard edits angle/power directly.
-  let aiming = false;
+  // Aim state for whoever is up.
+  let aiming = false; // pointer is down
+  let dragging = false; // pointer has moved far enough to count as a drag
   let dragStart = { x: 0, y: 0 };
+  let dragNow = { x: 0, y: 0 };
+  let aimBefore = { angle: 0, power: 0 };
   let aim = { angle: -Math.PI / 4, power: 0 };
   let facing = 1;
+  let lastTickStep = -1;
+  let lastEmit = 0;
 
   // Camera
   let w = 0;
@@ -451,9 +510,13 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
   let dpr = 1;
   let scale = 1;
   let camX = 0;
+  // Space the HUD's bottom controls take; the ground is drawn above it.
+  let insetBottom = 0;
+  let baseY = 0; // eases toward h - insetBottom
 
   const active = () => players[turn];
   const human = () => players[0];
+  const humanAiming = () => phase === "aim" && !!active() && !active().bot;
 
   function makePlayers() {
     const restBall = (): Ball => ({ x: TEE_X, y: 0, vx: 0, vy: 0, club: "driver", firstImpact: true, rest: 0, t: 0 });
@@ -469,9 +532,7 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     hole = course[holeIndex];
     phase = "aim";
     for (const p of players) {
-      p.ball.x = TEE_X;
-      p.ball.y = groundAt(hole, TEE_X) - R;
-      p.ball.vx = p.ball.vy = 0;
+      p.ball = { x: TEE_X, y: groundAt(hole, TEE_X) - R, vx: 0, vy: 0, club: "driver", firstImpact: true, rest: 0, t: 0 };
       p.lastRest = { x: p.ball.x, y: p.ball.y };
       p.strokes = 0;
       p.holed = false;
@@ -484,6 +545,7 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
 
   function emit() {
     const me = human();
+    const vw = viewW();
     onHud({
       phase,
       mode,
@@ -505,7 +567,19 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
       lastHole,
       strokes: me.strokes,
       total: me.results.reduce((s, r) => s + r.points, 0),
-      results: me.results.slice()
+      results: me.results.slice(),
+      paused,
+      coach: inputOn && humanAiming() && holeIndex === 0 && me.strokes === 0 && !coached,
+      aim: humanAiming() ? { power: aim.power, loft: loftOf(aim.angle) } : null,
+      overview: {
+        d: overviewPaths[holeIndex],
+        cup: (hole.cupX / hole.width) * OVERVIEW_W,
+        view: [(Math.max(0, camX) / hole.width) * OVERVIEW_W, (Math.min(hole.width, camX + vw) / hole.width) * OVERVIEW_W],
+        balls: players
+          .map((p, i) => ({ x: (p.ball.x / hole.width) * OVERVIEW_W, y: Number(oy(p.ball.y)), bot: p.bot, active: i === turn, holed: p.holed }))
+          .filter((b) => !b.holed)
+          .map(({ holed: _h, ...b }) => b)
+      }
     });
   }
 
@@ -513,17 +587,22 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     message = { text, until: performance.now() + 1800 };
   }
 
-  // ---- coordinates ----
+  // ---- coordinates and camera ----
   const viewW = () => w / scale;
   const toScreenX = (x: number) => (x - camX) * scale;
-  const toScreenY = (y: number) => h - (WORLD_H - y) * scale;
+  const toScreenY = (y: number) => baseY - (WORLD_H - y) * scale;
 
+  /**
+   * While aiming, the ball sits about a third of the way in from the side it's hitting away from,
+   * so there is always room to pull back. The view may run past the ends of the hole into the
+   * out-of-bounds area instead of pinning the ball to the screen edge.
+   */
   function targetCam() {
     const vw = viewW();
-    if (hole.width <= vw) return (hole.width - vw) / 2;
+    if (hole.width <= vw * 0.92) return (hole.width - vw) / 2;
     const b = active()?.ball ?? { x: TEE_X };
-    const lead = phase === "aim" ? Math.sign(hole.cupX - b.x) * vw * 0.12 : 0;
-    return Math.min(Math.max(b.x + lead - vw / 2, 0), hole.width - vw);
+    const desired = phase === "flight" ? b.x - vw / 2 : b.x - vw * (hole.cupX >= b.x ? 0.32 : 0.68);
+    return Math.min(Math.max(desired, -vw * 0.3), hole.width - vw * 0.7);
   }
 
   function resize() {
@@ -533,8 +612,10 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     h = rect.height;
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
-    scale = Math.max(Math.min(h / WORLD_H, w / 1100), 0.42);
+    scale = Math.max(Math.min((h - insetBottom) / WORLD_H, w / 1100), 0.42);
+    baseY = h - insetBottom;
     camX = targetCam();
+    if (players.length) emit();
   }
 
   // ---- turns ----
@@ -564,29 +645,35 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     const p = active();
     phase = "aim";
     fastForward = false;
+    aiming = dragging = false;
     facing = hole.cupX >= p.ball.x ? 1 : -1;
     club = suggestClub(hole.cupX - p.ball.x);
-    aim = { angle: club === "putter" ? (facing > 0 ? 0 : -Math.PI) : facing > 0 ? -Math.PI / 4 : (-3 * Math.PI) / 4, power: 0 };
+    // A starting aim so the preview shows and the Hit button works; a drag replaces it.
+    aim = { angle: angleOf(club === "putter" ? 0 : Math.PI / 4, facing), power: p.bot ? 0 : 0.4 };
+    lastTickStep = Math.floor(aim.power * 10);
     if (p.bot) {
       botStatus = "thinking";
       botSearch = planShot(hole, p.ball.x, p.ball.y, difficulty);
       botPlan = null;
       botSwingAt = performance.now() + 450; // a beat, so the turn change reads
+      if (inputOn) sfx?.botTurn();
     } else botStatus = null;
     emit();
   }
 
   function shoot() {
     const p = active();
-    if (phase !== "aim" || aim.power < 0.04) return;
+    if (phase !== "aim" || aim.power < 0.04 || paused) return;
     const b = newBall(p.ball.x, p.ball.y, club, aim.angle, aim.power);
     p.lastRest = { x: p.ball.x, y: p.ball.y };
     p.ball = b;
     p.strokes++;
     p.trail = [];
     phase = "flight";
-    aiming = false;
+    aiming = dragging = false;
+    if (!p.bot) coached = true;
     if (p.bot) botStatus = null;
+    sfx?.hit(club, aim.power);
     emit();
   }
 
@@ -600,6 +687,17 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     phase = holeIndex === HOLES - 1 ? "done" : "holed";
     fastForward = false;
     botStatus = null;
+    const me = human();
+    const done = phase === "done";
+    window.setTimeout(() => {
+      if (!done) sfx?.result(me.strokes - hole.par);
+      else if (players.length === 1) sfx?.round("solo");
+      else {
+        const a = me.results.reduce((s, r) => s + r.strokes, 0);
+        const b = players[1].results.reduce((s, r) => s + r.strokes, 0);
+        sfx?.round(a < b ? "win" : a > b ? "loss" : "tie");
+      }
+    }, 650);
     emit();
   }
 
@@ -608,9 +706,12 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     p.ball.vx = p.ball.vy = 0;
     if (result === "sunk") {
       p.holed = true;
+      sfx?.cup();
+      if (!p.bot) vibrate(35);
       if (mode === "bot") flash(`${p.label === "You" ? "You" : "The bot"} holed out in ${p.strokes}.`);
     } else if (result === "oob") {
       p.strokes++;
+      sfx?.outOfBounds();
       flash(`${p.bot ? "Bot: out" : "Out"} of bounds. One stroke penalty.`);
       p.ball.x = p.lastRest.x;
       p.ball.y = p.lastRest.y;
@@ -623,16 +724,27 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     beginTurn();
   }
 
-  // ---- input ----
-  function setAimFromDrag(sx: number, sy: number) {
-    // Measured in screen pixels so a full swing feels the same on a phone and a monitor.
-    const dx = dragStart.x - sx;
-    const dy = dragStart.y - sy;
+  // ---- aiming ----
+  function powerTicks() {
+    const step = Math.floor(aim.power * 10 + 1e-6);
+    if (step !== lastTickStep) {
+      lastTickStep = step;
+      if (aim.power > 0) sfx?.tick(aim.power);
+    }
+  }
+
+  /** Full power is a pull of about a third of the shorter screen side, so it fits on a phone. */
+  const maxDrag = () => Math.min(240, Math.max(110, 0.3 * Math.min(w, h)));
+
+  function setAimFromDrag() {
+    const dx = dragStart.x - dragNow.x;
+    const dy = dragStart.y - dragNow.y;
     const len = Math.hypot(dx, dy);
-    const maxDrag = Math.min(280, Math.max(150, 0.42 * Math.min(w, h)));
-    aim.power = Math.min(1, len / maxDrag);
+    aim.power = Math.min(1, (len - CANCEL_PX * 0.5) / maxDrag());
+    aim.power = Math.max(0, aim.power);
     if (len > 2) aim.angle = Math.atan2(dy, dx);
     facing = Math.cos(aim.angle) >= 0 ? 1 : -1;
+    powerTicks();
   }
 
   function pointerPos(e: PointerEvent) {
@@ -640,10 +752,9 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
 
-  const humanAiming = () => phase === "aim" && !active().bot;
-
   const onDown = (e: PointerEvent) => {
-    if (!inputOn) return;
+    if (!inputOn || paused) return;
+    sfx?.unlock();
     if (phase === "flight") {
       fastForward = !fastForward;
       emit();
@@ -652,37 +763,77 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     if (!humanAiming()) return;
     canvas.setPointerCapture(e.pointerId);
     aiming = true;
-    dragStart = pointerPos(e);
-    aim.power = 0;
+    dragging = false;
+    dragStart = dragNow = pointerPos(e);
+    aimBefore = { ...aim };
   };
   const onMove = (e: PointerEvent) => {
     if (!aiming) return;
-    const p = pointerPos(e);
-    setAimFromDrag(p.x, p.y);
+    dragNow = pointerPos(e);
+    const len = Math.hypot(dragNow.x - dragStart.x, dragNow.y - dragStart.y);
+    if (len > CANCEL_PX) {
+      if (!dragging) {
+        dragging = true;
+        coached = true;
+        emit();
+      }
+      setAimFromDrag();
+      const now = performance.now();
+      if (now - lastEmit > 60) {
+        lastEmit = now;
+        emit();
+      }
+    } else if (dragging) {
+      // Back over the starting point: the shot will be cancelled on release.
+      aim = { ...aimBefore };
+    }
   };
   const onUp = (e: PointerEvent) => {
     if (!aiming) return;
     aiming = false;
-    const p = pointerPos(e);
-    setAimFromDrag(p.x, p.y);
-    if (aim.power < 0.04) {
-      aim.power = 0;
+    dragNow = pointerPos(e);
+    const len = Math.hypot(dragNow.x - dragStart.x, dragNow.y - dragStart.y);
+    const wasDragging = dragging;
+    dragging = false;
+    if (!wasDragging || len <= CANCEL_PX || aim.power < 0.04) {
+      aim = { ...aimBefore };
+      emit();
       return;
     }
     shoot();
   };
   const onCancel = () => {
-    aiming = false;
-    if (humanAiming()) aim.power = 0;
+    if (aiming) aim = { ...aimBefore };
+    aiming = dragging = false;
   };
+  const onContext = (e: Event) => e.preventDefault();
+
+  function nudge(dLoft: number, dPower: number) {
+    if (!humanAiming() || paused) return;
+    const loft = Math.max(LOFT_MIN, Math.min(LOFT_MAX, loftOf(aim.angle) + dLoft));
+    aim.angle = angleOf(loft, facing);
+    aim.power = Math.max(0, Math.min(1, aim.power + dPower));
+    coached = true;
+    powerTicks();
+    emit();
+  }
+
+  function flip() {
+    if (!humanAiming() || paused) return;
+    facing = -facing;
+    aim.angle = angleOf(loftOf(aim.angle), facing);
+    sfx?.click();
+    emit();
+  }
 
   const onKey = (e: KeyboardEvent) => {
-    if (!inputOn) return;
+    if (!inputOn || paused) return;
     const target = e.target as HTMLElement | null;
     if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
     if (target && /^(BUTTON|A)$/.test(target.tagName) && (e.key === " " || e.key === "Enter")) return;
     if (document.querySelector("dialog[open]")) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    sfx?.unlock();
     if (phase === "flight" && (e.key === "f" || e.key === "F" || e.key === " ")) {
       e.preventDefault();
       fastForward = !fastForward;
@@ -695,16 +846,15 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
       setClub(clubKey.id);
       return;
     }
-    const stepA = e.shiftKey ? 0.01 : 0.035;
-    if (e.key === "ArrowLeft") aim.angle -= stepA * (Math.cos(aim.angle) >= 0 ? 1 : -1);
-    else if (e.key === "ArrowRight") aim.angle += stepA * (Math.cos(aim.angle) >= 0 ? 1 : -1);
-    else if (e.key === "ArrowUp") aim.power = Math.min(1, aim.power + (e.shiftKey ? 0.01 : 0.04));
-    else if (e.key === "ArrowDown") aim.power = Math.max(0, aim.power - (e.shiftKey ? 0.01 : 0.04));
-    else if (e.key === "a" || e.key === "A") aim.angle = Math.PI - aim.angle; // flip direction
+    const fine = e.shiftKey ? 0.25 : 1;
+    if (e.key === "ArrowLeft") nudge(0.035 * fine * (facing > 0 ? 1 : -1), 0);
+    else if (e.key === "ArrowRight") nudge(-0.035 * fine * (facing > 0 ? 1 : -1), 0);
+    else if (e.key === "ArrowUp") nudge(0, 0.04 * fine);
+    else if (e.key === "ArrowDown") nudge(0, -0.04 * fine);
+    else if (e.key === "a" || e.key === "A") flip();
     else if (e.key === " " || e.key === "Enter") shoot();
     else return;
     e.preventDefault();
-    facing = Math.cos(aim.angle) >= 0 ? 1 : -1;
   };
 
   // ---- bot ----
@@ -788,9 +938,51 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     ctx.fill();
   }
 
+  /** The ground past either end of the hole: darker, hatched, with an "out of bounds" post. */
+  function drawBeyond(a: number, b: number, y: number, edge: number) {
+    const sx0 = toScreenX(a);
+    const sx1 = toScreenX(b);
+    const sy = toScreenY(y);
+    ctx.fillStyle = "#1a1c21";
+    ctx.fillRect(sx0, sy, sx1 - sx0, h - sy);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(sx0, sy, sx1 - sx0, h - sy);
+    ctx.clip();
+    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+    ctx.lineWidth = 1;
+    for (let x = sx0 - h; x < sx1 + h; x += 14) {
+      ctx.beginPath();
+      ctx.moveTo(x, sy);
+      ctx.lineTo(x + (h - sy), h);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.strokeStyle = "rgba(240,180,91,0.55)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    const ex = toScreenX(edge);
+    ctx.moveTo(ex, sy - 90 * scale);
+    ctx.lineTo(ex, h);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = "10px ui-monospace, Menlo, monospace";
+    ctx.fillStyle = "rgba(240,180,91,0.7)";
+    const label = "Out of bounds";
+    const lw = ctx.measureText(label).width;
+    // Inside the out-of-bounds side, but never cut off by the screen edge.
+    const lx = edge === 0 ? Math.max(6, ex - 6 - lw) : Math.min(w - 6 - lw, ex + 6);
+    ctx.fillText(label, lx, sy - 60 * scale);
+  }
+
   function drawTerrain() {
+    const vw = viewW();
+    if (camX < 0) drawBeyond(camX - 10, 0, hole.ys[0], 0);
+    if (camX + vw > hole.width) drawBeyond(hole.width, camX + vw + 10, hole.ys[hole.ys.length - 1], hole.width);
+
     const i0 = Math.max(0, Math.floor(camX / STEP) - 2);
-    const i1 = Math.min(hole.ys.length - 1, Math.ceil((camX + viewW()) / STEP) + 2);
+    const i1 = Math.min(hole.ys.length - 1, Math.ceil((camX + vw) / STEP) + 2);
 
     ctx.beginPath();
     ctx.moveTo(toScreenX(i0 * STEP), h);
@@ -871,7 +1063,6 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     ctx.ellipse(4, -60, 7, 6, 0, 0, Math.PI * 2);
     ctx.fill();
     if (p.bot) {
-      // antenna
       ctx.strokeStyle = suit;
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -923,7 +1114,9 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     ctx.beginPath();
     ctx.arc(sx, sy, r, 0, Math.PI * 2);
     ctx.fill();
-    if (mode === "bot" && !isActive) {
+    const cur = active();
+    const overlapping = cur && cur !== p && Math.abs(cur.ball.x - p.ball.x) < 40 && phase === "aim";
+    if (mode === "bot" && !isActive && !overlapping) {
       ctx.font = "10px ui-monospace, Menlo, monospace";
       ctx.textAlign = "center";
       ctx.fillStyle = p.bot ? "rgba(240,180,91,0.85)" : "rgba(230,234,242,0.8)";
@@ -965,6 +1158,41 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     ctx.fillText(`${Math.round(aim.power * 100)}%`, bx + 64, by + 5);
   }
 
+  /** The pull itself: a band from where you pressed to your finger, and the cancel ring. */
+  function drawSling() {
+    if (!aiming) return;
+    const len = Math.hypot(dragNow.x - dragStart.x, dragNow.y - dragStart.y);
+    const cancelling = dragging && len <= CANCEL_PX;
+    ctx.strokeStyle = cancelling ? "rgba(240,180,91,0.9)" : "rgba(134,168,246,0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(dragStart.x, dragStart.y, CANCEL_PX, 0, Math.PI * 2);
+    ctx.stroke();
+    if (!dragging) return;
+    if (cancelling) {
+      ctx.font = "11px ui-monospace, Menlo, monospace";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(240,180,91,0.95)";
+      ctx.fillText("Let go to cancel", dragStart.x, dragStart.y - CANCEL_PX - 10);
+      ctx.textAlign = "left";
+      return;
+    }
+    // Clamp the drawn band at full power so it reads as "maxed".
+    const k = Math.min(1, (maxDrag() + CANCEL_PX * 0.5) / len);
+    const ex = dragStart.x + (dragNow.x - dragStart.x) * k;
+    const ey = dragStart.y + (dragNow.y - dragStart.y) * k;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(dragStart.x, dragStart.y);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = aim.power >= 1 ? "#f0b45b" : "#86a8f6";
+    ctx.beginPath();
+    ctx.arc(ex, ey, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   function drawPinMarker() {
     const cx = toScreenX(hole.cupX);
     if (cx >= 0 && cx <= w) return;
@@ -989,7 +1217,7 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     ctx.font = "13px ui-monospace, Menlo, monospace";
     ctx.textAlign = "center";
     ctx.fillStyle = "rgba(240,180,91,0.95)";
-    ctx.fillText(message.text, w / 2, Math.max(120, h * 0.28));
+    ctx.fillText(message.text, w / 2, Math.max(150, h * 0.3));
     ctx.textAlign = "left";
   }
 
@@ -997,13 +1225,12 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
   let raf = 0;
   let last = performance.now();
   let acc = 0;
-  let lastEmit = 0;
 
   function frame(t: number) {
     const dt = Math.min(0.05, (t - last) / 1000);
     last = t;
 
-    if (players.length) {
+    if (players.length && !paused) {
       if (phase === "flight") {
         const p = active();
         acc += dt * (fastForward ? 4 : 1);
@@ -1011,6 +1238,10 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
         while (acc >= FIXED && phase === "flight" && guard++ < 1000) {
           const r = stepBall(hole, p.ball, FIXED);
           acc -= FIXED;
+          if (p.ball.impact) {
+            if (inputOn) sfx?.bounce(p.ball.impact.kind, p.ball.impact.speed);
+            p.ball.impact = null;
+          }
           if (r !== "move") {
             endShot(r);
             break;
@@ -1019,16 +1250,19 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
         if (phase === "flight") {
           p.trail.push({ x: p.ball.x, y: p.ball.y });
           if (p.trail.length > 240) p.trail.shift();
-          if (t - lastEmit > 250) {
-            lastEmit = t;
-            emit();
-          }
         }
       } else acc = 0;
       runBot(t);
 
+      baseY += (h - insetBottom - baseY) * Math.min(1, dt * 6);
       const target = targetCam();
+      const moving = Math.abs(target - camX) > 1;
       camX += (target - camX) * Math.min(1, dt * (phase === "flight" ? 5 : 3));
+      // Keep the HUD (distance, overview window) current while things move.
+      if ((phase === "flight" || moving || dragging) && t - lastEmit > (dragging ? 60 : 200)) {
+        lastEmit = t;
+        emit();
+      }
     }
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1040,15 +1274,17 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
       drawAim();
       if (active()) drawBall(active(), true);
       drawPinMarker();
+      drawSling();
       drawMessage(t);
     }
     raf = requestAnimationFrame(frame);
   }
 
   function setClub(c: Club) {
-    if (!humanAiming()) return;
+    if (!humanAiming() || paused) return;
     club = c;
-    if (c === "putter") aim.angle = facing > 0 ? 0 : -Math.PI;
+    if (c === "putter") aim.angle = angleOf(0, facing);
+    sfx?.click();
     emit();
   }
 
@@ -1057,6 +1293,7 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
     difficulty = d;
     holeIndex = 0;
     lastHole = null;
+    paused = false;
     players = makePlayers();
     resetHole();
   }
@@ -1067,6 +1304,7 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
   canvas.addEventListener("pointermove", onMove);
   canvas.addEventListener("pointerup", onUp);
   canvas.addEventListener("pointercancel", onCancel);
+  canvas.addEventListener("contextmenu", onContext);
   window.addEventListener("keydown", onKey);
   resize();
   newRound("solo", "medium"); // shows the first hole behind the intro card
@@ -1075,14 +1313,38 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
   return {
     /** Starts a round. Called from the intro card. */
     start(m: Mode = "solo", d: Difficulty = "medium") {
-      newRound(m, d);
+      sfx?.unlock();
       inputOn = true;
+      coached = false;
+      newRound(m, d);
     },
     /** Stops reacting to input, e.g. while the intro card is back up. */
     pause() {
       inputOn = false;
     },
+    /** Freezes the ball, the bot and input; used by the pause menu. */
+    setPaused(on: boolean) {
+      if (on === paused) return;
+      paused = on;
+      if (on) {
+        pausedAt = performance.now();
+        aiming = dragging = false;
+      } else {
+        botSwingAt += performance.now() - pausedAt;
+        last = performance.now();
+      }
+      emit();
+    },
+    /** Height in px of the controls along the bottom, so the ground stays clear of them. */
+    setInsetBottom(px: number) {
+      if (Math.abs(px - insetBottom) < 1) return;
+      insetBottom = px;
+      scale = Math.max(Math.min((h - insetBottom) / WORLD_H, w / 1100), 0.42);
+    },
     setClub,
+    nudge,
+    flip,
+    hit: shoot,
     nextHole() {
       if (phase !== "holed") return;
       holeIndex++;
@@ -1104,6 +1366,7 @@ export function createGolf(canvas: HTMLCanvasElement, seed: string, onHud: (hud:
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerup", onUp);
       canvas.removeEventListener("pointercancel", onCancel);
+      canvas.removeEventListener("contextmenu", onContext);
       window.removeEventListener("keydown", onKey);
     }
   };
