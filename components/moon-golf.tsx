@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { CLUBS, HOLES, createGolf, type Club, type Difficulty, type Hud, type Mode } from "@/lib/golf-engine";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ArrowLeftRight, ChevronDown, ChevronUp, Minus, Pause, Plus, Volume2, VolumeX } from "lucide-react";
+import { CLUBS, HOLES, OVERVIEW_H, OVERVIEW_W, createGolf, type Club, type Difficulty, type Hud, type Mode } from "@/lib/golf-engine";
+import { createSfx, type Sfx } from "@/lib/golf-sound";
 import { fetchBoard, leaderboardEnabled, submitScore, type Board } from "@/lib/leaderboard";
 import { NAME_RE, cleanName } from "@/lib/leaderboard-rules";
 
@@ -80,9 +82,74 @@ function Leaderboard({ board, limit, highlight }: { board: Board | null; limit: 
   );
 }
 
+/** A button that repeats while held, for nudging aim and power. */
+function HoldButton({ onStep, label, children, className = "" }: { onStep: () => void; label: string; children: ReactNode; className?: string }) {
+  const timer = useRef<number>(0);
+  const step = useRef(onStep);
+  step.current = onStep;
+  const stop = () => {
+    window.clearTimeout(timer.current);
+    window.clearInterval(timer.current);
+  };
+  useEffect(() => stop, []);
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      className={`inline-flex h-10 w-10 items-center justify-center border border-[#ffffff]/25 bg-[#0b0e16]/80 text-[#ffffff]/85 hover:border-[#ffffff]/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#86a8f6] ${className}`}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        step.current();
+        stop();
+        timer.current = window.setTimeout(() => {
+          timer.current = window.setInterval(() => step.current(), 55);
+        }, 320);
+      }}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          step.current();
+        }
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** The whole hole in one strip: terrain, flag, balls and the part on screen. */
+function Overview({ o }: { o: Hud["overview"] }) {
+  return (
+    <svg
+      viewBox={`0 0 ${OVERVIEW_W} ${OVERVIEW_H}`}
+      preserveAspectRatio="none"
+      className="mt-2 block h-8 w-full max-w-[22rem] border border-[#ffffff]/15 bg-[#05060b]/60"
+      aria-hidden="true"
+    >
+      <path d={o.d} fill="#3a3d44" />
+      <rect x={o.view[0]} y={0} width={Math.max(4, o.view[1] - o.view[0])} height={OVERVIEW_H} fill="#ffffff" fillOpacity={0.07} stroke="#ffffff" strokeOpacity={0.35} vectorEffect="non-scaling-stroke" />
+      <line x1={o.cup} x2={o.cup} y1={4} y2={OVERVIEW_H} stroke="#86a8f6" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+      <rect x={o.cup} y={4} width={22} height={9} fill="#86a8f6" />
+      {o.balls.map((b, i) => (
+        <ellipse key={i} cx={b.x} cy={Math.max(5, b.y - 5)} rx={b.active ? 11 : 8} ry={b.active ? 5 : 4} fill={b.bot ? "#f0b45b" : "#ffffff"} />
+      ))}
+    </svg>
+  );
+}
+
 export function MoonGolf() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
+  const sfxRef = useRef<Sfx | null>(null);
+  const [soundOn, setSoundOn] = useState(true);
+  const [menu, setMenu] = useState(false);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const insetMax = useRef(0);
   const [hud, setHud] = useState<Hud | null>(null);
   const [started, setStarted] = useState(false);
   const [seed, setSeed] = useState("");
@@ -108,9 +175,15 @@ export function MoonGolf() {
     fetchBoard().then(setBoard);
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const game = createGolf(canvas, s, setHud);
+    const sfx = createSfx();
+    sfxRef.current = sfx;
+    setSoundOn(sfx.enabled);
+    const game = createGolf(canvas, s, setHud, sfx);
     gameRef.current = game;
-    return () => game.destroy();
+    return () => {
+      game.destroy();
+      sfx.destroy();
+    };
   }, []);
 
   const you = hud?.players[0];
@@ -137,6 +210,66 @@ export function MoonGolf() {
   }, [hud?.phase, hud?.total, seed, outcome]);
 
   const setClub = (c: Club) => gameRef.current?.setClub(c);
+
+  // Keep the ground above the bottom controls. Uses the tallest the controls have been, so the
+  // world doesn't bob up and down as they change between turns.
+  useEffect(() => {
+    const el = controlsRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const box = el.getBoundingClientRect();
+      const parent = el.offsetParent?.getBoundingClientRect();
+      const fromBottom = parent ? parent.bottom - box.top : box.height;
+      if (fromBottom > insetMax.current) {
+        insetMax.current = fromBottom;
+        gameRef.current?.setInsetBottom(fromBottom + 8);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+
+  const toggleSound = () => {
+    const sfx = sfxRef.current;
+    if (!sfx) return;
+    sfx.setEnabled(!sfx.enabled);
+    setSoundOn(sfx.enabled);
+    sfx.click();
+  };
+
+  const canPause = started && (hud?.phase === "aim" || hud?.phase === "flight");
+  const openMenu = () => {
+    gameRef.current?.setPaused(true);
+    setMenu(true);
+  };
+  const closeMenu = () => {
+    gameRef.current?.setPaused(false);
+    setMenu(false);
+  };
+
+  // Esc (or P) pauses and resumes.
+  const canPauseRef = useRef(canPause);
+  canPauseRef.current = canPause;
+  const menuRef = useRef(menu);
+  menuRef.current = menu;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" && e.key !== "p" && e.key !== "P") return;
+      const t = e.target as HTMLElement | null;
+      if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+      if (menuRef.current) {
+        e.preventDefault();
+        gameRef.current?.setPaused(false);
+        setMenu(false);
+      } else if (canPauseRef.current) {
+        e.preventDefault();
+        gameRef.current?.setPaused(true);
+        setMenu(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const startRound = () => {
     write("moongolf:mode", mode);
@@ -173,11 +306,13 @@ export function MoonGolf() {
 
   const playAgain = () => {
     setSubmit({ state: "idle" });
+    setMenu(false);
     gameRef.current?.restart();
   };
 
   const newGame = () => {
     setSubmit({ state: "idle" });
+    setMenu(false);
     gameRef.current?.pause();
     setStarted(false);
   };
@@ -189,14 +324,15 @@ export function MoonGolf() {
       <canvas
         ref={canvasRef}
         className="block h-full w-full touch-none"
-        aria-label="Moon Golf. Drag back from anywhere and release to hit the ball. Keyboard: arrow keys aim, Space hits, 1 to 4 pick a club."
+        aria-label="Moon Golf. Press anywhere, pull back and release to hit the ball, or use the aim buttons. Keyboard: arrow keys set height and power, Space hits, 1 to 4 pick a club, Escape pauses."
         role="img"
       />
 
       {/* Scoreline */}
       {hud && you ? (
         <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-3 p-3 md:p-5">
-          <dl className="mono m-0 flex gap-5 text-[0.78rem] text-[#ffffff]/70">
+          <div className="min-w-0 flex-1 basis-0">
+          <dl className="mono m-0 flex gap-3 whitespace-nowrap text-[0.78rem] text-[#ffffff]/70 sm:gap-5">
             <div>
               <dt>Hole</dt>
               <dd className="m-0 text-[1.05rem] text-[#ffffff]">
@@ -215,31 +351,48 @@ export function MoonGolf() {
               </div>
             )}
             <div>
-              <dt>{vsBot ? (botTurn ? "Bot to pin" : "To pin") : "To pin"}</dt>
+              <dt>
+                <span className="sm:hidden">Pin</span>
+                <span className="hidden sm:inline">{vsBot && botTurn ? "Bot to pin" : "To pin"}</span>
+              </dt>
               <dd className={`m-0 text-[1.05rem] ${botTurn ? BOT_COLOR : "text-[#ffffff]"}`}>{hud.toPin} m</dd>
             </div>
           </dl>
+          {started ? <Overview o={hud.overview} /> : null}
           {vsBot && bot ? (
-            <table className="mono border-collapse text-right text-[0.78rem] text-[#ffffff]/60">
+            <p className="mono m-0 mt-1.5 whitespace-nowrap text-[0.75rem] text-[#ffffff]/70 sm:hidden">
+              {[you, bot].map((p, i) => (
+                <span key={p.label} className={i ? `ml-3 ${BOT_COLOR}` : "text-[#ffffff]"}>
+                  {hud.turn === i && hud.phase !== "holed" && hud.phase !== "done" ? "▸ " : ""}
+                  {p.label} {p.strokes}
+                  {p.holed ? "✓" : ""} <span className="opacity-70">({toPar(p.strokeTotal, parTotal)})</span>
+                </span>
+              ))}
+            </p>
+          ) : null}
+          </div>
+          <div className="flex shrink-0 items-start gap-3">
+          {vsBot && bot ? (
+            <table className="mono hidden border-collapse whitespace-nowrap text-right text-[0.78rem] text-[#ffffff]/60 sm:table">
               <thead>
                 <tr>
-                  <th className="pr-3 text-left font-normal" />
-                  <th className="px-2 font-normal">Hole</th>
-                  <th className="pl-2 font-normal">Total</th>
+                  <th className="pr-2 text-left font-normal sm:pr-3" />
+                  <th className="px-1 font-normal sm:px-2">Hole</th>
+                  <th className="pl-1 font-normal sm:pl-2">Total</th>
                 </tr>
               </thead>
-              <tbody className="text-[1rem]">
+              <tbody className="text-[0.9rem] sm:text-[1rem]">
                 {[you, bot].map((p, i) => (
                   <tr key={p.label} className={i ? BOT_COLOR : "text-[#ffffff]"}>
-                    <td className="pr-3 text-left text-[0.78rem]">
+                    <td className="pr-2 text-left text-[0.72rem] sm:pr-3 sm:text-[0.78rem]">
                       {hud.turn === i && hud.phase !== "holed" && hud.phase !== "done" ? "▸ " : ""}
                       {p.label}
                     </td>
-                    <td className="px-2">
+                    <td className="px-1 sm:px-2">
                       {p.strokes}
                       {p.holed ? "✓" : ""}
                     </td>
-                    <td className="pl-2">{toPar(p.strokeTotal, parTotal)}</td>
+                    <td className="pl-1 sm:pl-2">{toPar(p.strokeTotal, parTotal)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -250,23 +403,92 @@ export function MoonGolf() {
               <div className="text-[1.35rem] leading-tight text-[#ffffff]">{hud.total.toLocaleString()}</div>
             </div>
           )}
+          <div className="pointer-events-auto flex">
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-label={soundOn ? "Turn sound off" : "Turn sound on"}
+              aria-pressed={soundOn}
+              title={soundOn ? "Sound on" : "Sound off"}
+              className="inline-flex h-9 w-9 items-center justify-center border border-[#ffffff]/25 bg-[#0b0e16]/70 text-[#ffffff]/80 hover:border-[#ffffff]/60"
+            >
+              {soundOn ? <Volume2 aria-hidden="true" className="h-4 w-4" /> : <VolumeX aria-hidden="true" className="h-4 w-4" />}
+            </button>
+            {canPause ? (
+              <button
+                type="button"
+                onClick={openMenu}
+                aria-label="Pause"
+                title="Pause (Esc)"
+                className="-ml-px inline-flex h-9 w-9 items-center justify-center border border-[#ffffff]/25 bg-[#0b0e16]/70 text-[#ffffff]/80 hover:border-[#ffffff]/60"
+              >
+                <Pause aria-hidden="true" className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+          </div>
         </div>
       ) : null}
 
-      {/* Clubs, or what the bot is doing */}
+      {/* Clubs, aim controls, or what the bot is doing. The bar itself lets presses through to the canvas. */}
       {hud && started && hud.phase !== "holed" && hud.phase !== "done" ? (
-        <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-center gap-0 p-3 md:p-5">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-3 md:p-5">
+          {hud.coach ? (
+            <p className="mono m-0 max-w-sm border border-[#86a8f6]/40 bg-[#0b0e16]/80 px-3 py-2 text-center text-[0.75rem] leading-[1.5] text-[#ffffff]/85" role="status">
+              Press anywhere, pull back away from the flag, let go. Pull back to where you started to cancel. Or set the shot with the buttons
+              below.
+            </p>
+          ) : null}
+          <div ref={controlsRef} className="flex flex-col items-center gap-2">
           {hud.phase === "flight" ? (
-            <button type="button" className={btn} onClick={() => gameRef.current?.toggleFastForward()}>
+            <button type="button" className={`${btn} pointer-events-auto`} onClick={() => gameRef.current?.toggleFastForward()}>
               {hud.fastForward ? "Normal speed" : "Fast-forward ×4"}
               <span className="mono ml-2 text-[0.7rem] text-[#ffffff]/50">tap / F</span>
             </button>
           ) : botTurn ? (
-            <p className={`mono m-0 border border-[#f0b45b]/40 bg-[#0b0e16]/70 px-4 py-2.5 text-[0.85rem] ${BOT_COLOR}`} role="status">
+            <p className={`mono pointer-events-auto m-0 border border-[#f0b45b]/40 bg-[#0b0e16]/70 px-4 py-2.5 text-[0.85rem] ${BOT_COLOR}`} role="status">
               {hud.botStatus === "thinking" ? "Bot is reading the terrain…" : `Bot takes the ${CLUBS.find((c) => c.id === hud.club)?.label.toLowerCase()}`}
             </p>
           ) : (
-            <div role="group" aria-label="Club" className="flex">
+            <>
+            {hud.aim ? (
+              <div role="group" aria-label="Aim" className="pointer-events-auto flex items-center">
+                <HoldButton label="Lower" onStep={() => gameRef.current?.nudge(-0.0175, 0)}>
+                  <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                </HoldButton>
+                <HoldButton label="Higher" className="-ml-px" onStep={() => gameRef.current?.nudge(0.0175, 0)}>
+                  <ChevronUp aria-hidden="true" className="h-4 w-4" />
+                </HoldButton>
+                <span className="mono w-12 text-center text-[0.75rem] text-[#ffffff]/75" aria-live="off">
+                  {Math.round((hud.aim.loft * 180) / Math.PI)}°
+                </span>
+                <HoldButton label="Less power" onStep={() => gameRef.current?.nudge(0, -0.01)}>
+                  <Minus aria-hidden="true" className="h-4 w-4" />
+                </HoldButton>
+                <HoldButton label="More power" className="-ml-px" onStep={() => gameRef.current?.nudge(0, 0.01)}>
+                  <Plus aria-hidden="true" className="h-4 w-4" />
+                </HoldButton>
+                <span className="mono w-12 text-center text-[0.75rem] text-[#ffffff]/75">{Math.round(hud.aim.power * 100)}%</span>
+                <button
+                  type="button"
+                  aria-label="Aim the other way"
+                  title="Aim the other way (A)"
+                  onClick={() => gameRef.current?.flip()}
+                  className="inline-flex h-10 w-10 items-center justify-center border border-[#ffffff]/25 bg-[#0b0e16]/80 text-[#ffffff]/85 hover:border-[#ffffff]/60"
+                >
+                  <ArrowLeftRight aria-hidden="true" className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => gameRef.current?.hit()}
+                  disabled={hud.aim.power < 0.04}
+                  className={`${btnPrimary} -ml-px !min-h-10 px-5`}
+                >
+                  Hit
+                </button>
+              </div>
+            ) : null}
+            <div role="group" aria-label="Club" className="pointer-events-auto flex">
               {CLUBS.map((c, i) => (
                 <button
                   key={c.id}
@@ -284,7 +506,44 @@ export function MoonGolf() {
                 </button>
               ))}
             </div>
+            </>
           )}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Pause menu */}
+      {menu ? (
+        <div className="absolute inset-0 flex overflow-y-auto bg-[#05060b]/60 p-4" role="dialog" aria-modal="true" aria-labelledby="mg-paused">
+          <div className={card}>
+            <p className="mono m-0 text-[0.75rem] text-[#ffffff]/55">
+              Hole {hud?.hole} of {HOLES}
+            </p>
+            <h2 id="mg-paused" className="m-0 mt-2 text-[1.9rem] font-[450] tracking-[-0.03em]">
+              Paused
+            </h2>
+            <div className="mt-5 flex flex-col gap-2">
+              <button type="button" className={btnPrimary} onClick={closeMenu} autoFocus>
+                Resume
+              </button>
+              <button type="button" className={btn} onClick={toggleSound}>
+                Sound: {soundOn ? "on" : "off"}
+              </button>
+              <button type="button" className={btn} onClick={playAgain}>
+                Restart the round
+              </button>
+              <button type="button" className={btn} onClick={newGame}>
+                Change mode
+              </button>
+              <a className={btn} href="/">
+                Back to the site
+              </a>
+            </div>
+            <p className="mono m-0 mt-5 text-[0.72rem] leading-[1.6] text-[#ffffff]/50">
+              Mouse or touch: press anywhere, pull back, let go. Keyboard: ← → height, ↑ ↓ power (Shift for fine steps), A flips, Space hits,
+              1–4 clubs, F fast-forwards, Esc pauses.
+            </p>
+          </div>
         </div>
       ) : null}
 
@@ -300,6 +559,7 @@ export function MoonGolf() {
             <ul className="m-0 mt-5 list-none space-y-2.5 p-0 text-[0.92rem] leading-[1.5] text-[#ffffff]/80">
               <li>
                 <b className="font-medium text-[#ffffff]">Drag back, let go.</b> Press anywhere, pull away from where you want the ball to go, release.
+                Or set the height and power with the buttons and press Hit.
               </li>
               <li>
                 <b className="font-medium text-[#ffffff]">No air.</b> Every shot is a clean parabola. The dots only show the start of it.
@@ -356,7 +616,7 @@ export function MoonGolf() {
               ) : null}
             </div>
 
-            <p className="mono m-0 mt-4 text-[0.72rem] text-[#ffffff]/50">Keyboard: ← → aim · ↑ ↓ power · A flips · Space hits · 1–4 clubs</p>
+            <p className="mono m-0 mt-4 text-[0.72rem] text-[#ffffff]/50">Keyboard: ← → height · ↑ ↓ power · A flips · Space hits · 1–4 clubs · Esc pauses</p>
             {best.today || best.ever ? (
               <p className="mono m-0 mt-2 text-[0.72rem] text-[#ffffff]/50">
                 Your best today {best.today.toLocaleString()} · all-time {best.ever.toLocaleString()}
