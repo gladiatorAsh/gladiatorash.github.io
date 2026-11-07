@@ -7,6 +7,7 @@ import { CopyEmailButton } from "@/components/copy-email-button";
 import { ReadingToggle, TopBar } from "@/components/top-bar";
 import { agentAnchor, meshAnchor, projectAnchor } from "@/lib/citadel";
 import { caseStudyFor } from "@/lib/work";
+import { PlannedProjects } from "@/components/planned-projects";
 import {
   agenticProjects,
   agentMesh,
@@ -87,6 +88,7 @@ export default function Home() {
                 <AgentProject key={project.title} project={project} num={`3.${i + 1}`} anchor={agentAnchor(project.title)} />
               ))}
             </div>
+            <PlannedProjects />
           </Chapter>
 
           <Chapter id="projects" title="Engineered by hand">

@@ -252,6 +252,47 @@ export const agentMeshTools: AgenticProject[] = [
 ];
 
 /** Personal agent systems, built with AI coding agents and running on free infrastructure. */
+export type PlannedProject = {
+  title: string;
+  status: "Planned" | "Early build" | "In progress";
+  goal: string;
+  shows: string;
+  next: string;
+  stack: string[];
+  repo: string;
+};
+
+/** Planned MCP projects: open source, built on the 2026-07-28 MCP spec. Update `status` and `next` as they move. */
+export const plannedProjects: PlannedProject[] = [
+  {
+    title: "Fusion MCP server",
+    status: "Early build",
+    goal: "Let any MCP client read an Autodesk Fusion design, change its parameters and export parts, through a token-protected bridge add-in.",
+    shows: "Long-running CAD work as background jobs, built to move to MCP Tasks, on a stateless server that follows the 2026-07-28 spec.",
+    next: "Test the add-in end to end in Fusion, then move exports to the Tasks extension.",
+    stack: ["Python", "MCP Python SDK 2.x", "Fusion API", "Tasks"],
+    repo: "https://github.com/gladiatorAsh/fusion-mcp-server"
+  },
+  {
+    title: "CAD part viewer (MCP Apps)",
+    status: "Early build",
+    goal: "A tool that answers with an interactive 3D view of a part, rendered right in the chat, instead of a paragraph of dimensions.",
+    shows: "MCP Apps: a ui:// resource and a sandboxed three.js view, alongside a text summary for hosts without UI support.",
+    next: "Verify rendering in Claude, VS Code and ChatGPT, then add STEP support and measurement tools.",
+    stack: ["TypeScript", "MCP Apps", "three.js", "MCP TS SDK v2"],
+    repo: "https://github.com/gladiatorAsh/mcp-cad-viewer"
+  },
+  {
+    title: "MCP tool bench",
+    status: "Early build",
+    goal: "Conformance checks and evals for MCP servers: do the schemas pass JSON Schema 2020-12, and does a model pick the right tool with the right arguments?",
+    shows: "Evaluation as infrastructure: lint and tool-selection accuracy that run in CI against any OpenAI-compatible model.",
+    next: "Multi-model comparison reports and a GitHub Action for MCP server repos.",
+    stack: ["Python", "MCP Python SDK 2.x", "JSON Schema", "GitHub Models"],
+    repo: "https://github.com/gladiatorAsh/mcp-tool-bench"
+  }
+];
+
 export const agenticProjects: AgenticProject[] = [
   {
     title: "Deals Galore",
