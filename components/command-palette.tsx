@@ -84,6 +84,7 @@ export default function CommandPalette() {
       { id: "work", label: "Case studies: Crystal RAG, Agent Assist", group: "Links", icon: BookOpen, keywords: "case study crystal rag agent assist document pipeline architecture work", run: () => (window.location.href = "/work/") },
       { id: "news", label: "Today's news: tech, India, Canada, US", group: "Links", icon: Newspaper, keywords: "headlines daily digest india canada us tech", run: () => (window.location.href = "/news/") },
       { id: "play", label: "Play Moon Golf", group: "Links", icon: Gamepad2, keywords: "game arcade golf moon space fun break", run: () => (window.location.href = "/play/") },
+      { id: "raigad", label: "Play Raigad: Hold the Fort", group: "Links", icon: Gamepad2, keywords: "game arcade tower defense fort maratha shivaji raigad", run: () => (window.location.href = "/play/raigad/") },
       { id: "learn", label: "Learning paths", group: "Links", icon: BookOpen, keywords: "course study learn mcp a2a evals observability security context", run: () => (window.location.href = "/learn/") },
       { id: "deals", label: "Deals Galore dashboard", group: "Links", icon: Github, keywords: "shopping agent deals", run: () => window.open("https://www.ashutoshysingh.com/deals-galore/", "_blank", "noopener") },
       { id: "github", label: "Open GitHub", group: "Links", icon: Github, keywords: "code repos", run: () => window.open(profile.github, "_blank", "noopener") },

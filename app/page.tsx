@@ -175,7 +175,11 @@ export default function Home() {
               <a className="link" href="/play/">
                 Moon Golf
               </a>
-              , nine holes in one-sixth gravity with a new course every day.
+              , nine holes in one-sixth gravity with a new course every day, or try to{" "}
+              <a className="link" href="/play/raigad/">
+                hold Raigad
+              </a>
+              , a tower-defense game set on the Maratha hill fort.
             </p>
           </Chapter>
 
