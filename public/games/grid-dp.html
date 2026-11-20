@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grid Path DP Trainer</title>
+<script>
+/* Follow the site's light/dark theme (same origin: localStorage "theme", and the parent page's data-theme when embedded). */
+(function(){var d=document.documentElement;function set(t){if(t==="light"||t==="dark")d.dataset.theme=t;}
+try{set(localStorage.getItem("theme"));}catch(e){}
+try{var p=window.parent!==window&&window.parent.document.documentElement;if(p){set(p.dataset.theme);new MutationObserver(function(){set(p.dataset.theme);}).observe(p,{attributes:true,attributeFilter:["data-theme"]});}}catch(e){}})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: graph-paper notebook. Board on the left is the hero; the right rail is the "tutor" (ask, feedback, live code). Highlighter yellow marks the one cell you're thinking about. */
+:root{
+  --paper:#eef1f6; --paper-line:rgba(47,79,216,.07); --ink:#17203a; --muted:#5f6a86;
+  --line:#cfd6e4; --cell-bg:#ffffff; --filled:#f6f8fc; --card:#ffffff;
+  --accent:#2f4fd8; --on-accent:#ffffff; --hl:#ffe14d; --good:#17895a; --bad:#cc3b33;
+  --rock:#3a4256; --rock2:#4a5370; --on-rock:#d9deea; --path:#2f4fd8; --on-path:#ffffff;
+  --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0f1320; --paper-line:rgba(138,162,255,.06); --ink:#e6eaf5; --muted:#8f99b5;
+    --line:#2a3249; --cell-bg:#161c2c; --filled:#1b2236; --card:#141a29;
+    --accent:#8ea4ff; --on-accent:#0f1320; --hl:#ffd84a; --good:#4fd39a; --bad:#ff7a70;
+    --rock:#2b3246; --rock2:#353d55; --on-rock:#9aa4c0; --path:#6f88ff; --on-path:#0b0f1a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0f1320; --paper-line:rgba(138,162,255,.06); --ink:#e6eaf5; --muted:#8f99b5;
+  --line:#2a3249; --cell-bg:#161c2c; --filled:#1b2236; --card:#141a29;
+  --accent:#8ea4ff; --on-accent:#0f1320; --hl:#ffd84a; --good:#4fd39a; --bad:#ff7a70;
+  --rock:#2b3246; --rock2:#353d55; --on-rock:#9aa4c0; --path:#6f88ff; --on-path:#0b0f1a;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--paper-line) 1px,transparent 1px),linear-gradient(90deg,var(--paper-line) 1px,transparent 1px);
+  background-size:24px 24px;
+  color:var(--ink); font-family:var(--body); font-size:15px; line-height:1.5;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 20px 48px;display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(28px,4vw,40px);line-height:1;margin:0;letter-spacing:-.02em;text-wrap:balance}
+h1 span{background:linear-gradient(transparent 58%,var(--hl) 58%);padding:0 2px;color:inherit}
+.thesis{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.thesis b{color:var(--ink)}
+.bar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.seg{display:inline-flex;border:1.5px solid var(--ink);border-radius:999px;overflow:hidden;background:var(--card)}
+.seg button{font:500 14px var(--body);border:0;background:transparent;color:var(--ink);padding:7px 14px;cursor:pointer}
+.seg button+button{border-left:1.5px solid var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.seg button:focus-visible,.btn:focus-visible,.chip:focus-visible,.cell:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.levels{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:500 13px var(--body);border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);color:var(--accent)}
+.chip .st{font-size:11px;letter-spacing:1px;color:var(--muted)}
+.chip .st.has{color:#d49a00}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 450px;gap:18px;align-items:start}
+@media (max-width:920px){.main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:16px}
+.boardcard{display:flex;flex-direction:column;gap:12px}
+.boardhead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.boardhead h2{font-family:var(--display);font-size:20px;margin:0;font-weight:700}
+.boardhead .lc{color:var(--muted);font-size:13px}
+.stmt{margin:0;color:var(--muted);max-width:65ch}
+.rec{font-family:var(--mono);font-size:14px;background:var(--filled);border:1px dashed var(--line);border-radius:8px;padding:8px 12px;overflow-x:auto;white-space:nowrap}
+#boardWrap{padding:6px 0;overflow:hidden}
+.board{display:grid;gap:4px;justify-content:center;--cell:56px}
+.cell{width:var(--cell);height:var(--cell);position:relative;background:var(--cell-bg);border:1.5px solid var(--line);border-radius:7px;display:grid;place-items:center;font-family:var(--mono);cursor:pointer;color:var(--ink);padding:0;user-select:none}
+.cell .dp{font-size:calc(var(--cell)*.33);font-weight:600;font-variant-numeric:tabular-nums}
+.cell .w{position:absolute;top:2px;left:5px;font-size:calc(var(--cell)*.19);color:var(--muted);font-weight:500}
+.cell .w.coin::before{content:"";display:inline-block;width:.62em;height:.62em;border-radius:50%;background:#e2a400;margin-right:2px;vertical-align:-.02em}
+.cell .tag{position:absolute;bottom:1px;right:5px;font:800 calc(var(--cell)*.2) var(--display);color:var(--accent)}
+.cell.obs{background:repeating-linear-gradient(45deg,var(--rock) 0 6px,var(--rock2) 6px 12px);border-color:var(--rock);color:var(--on-rock)}
+.cell.obs .dp{font-size:calc(var(--cell)*.26)}
+.cell.obs .w{display:none}
+.cell.filled:not(.obs){background:var(--filled)}
+.cell.locked{opacity:.42}
+.cell.fillable{border-style:dashed;border-color:var(--accent)}
+.cell.src{box-shadow:inset 0 0 0 3px var(--accent)}
+.cell.path{background:var(--path);border-color:var(--path);color:var(--on-path)}
+.cell.path .w,.cell.path .tag{color:var(--on-path)}
+.cell.cand{outline:2px dashed var(--accent);outline-offset:2px}
+.cell.sel{background:var(--hl);border-color:#1b1b1b;border-style:solid;color:#1b1b1b;opacity:1}
+.cell.sel .w,.cell.sel .tag{color:#3b3b3b}
+.cell.sel.obs{background:repeating-linear-gradient(45deg,#c9a800 0 6px,var(--hl) 6px 12px)}
+.arr{position:absolute;font-style:normal;font-weight:700;color:#1b1b1b;font-size:calc(var(--cell)*.22);line-height:1;font-family:var(--body)}
+.arr.at{top:1px;left:50%;transform:translateX(-50%)}
+.arr.al{left:2px;top:50%;transform:translateY(-50%)}
+.cell.flash{animation:pop .35s ease-out}
+.cell.shake{animation:shake .32s}
+@keyframes pop{0%{transform:scale(.86)}60%{transform:scale(1.07)}100%{transform:scale(1)}}
+@keyframes shake{20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+@media (prefers-reduced-motion: reduce){.cell.flash,.cell.shake{animation:none}}
+.strip{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:var(--mono);font-size:13px}
+.strip .lab{color:var(--muted);margin-right:4px}
+.strip .v{min-width:38px;text-align:center;padding:4px 6px;border:1.5px solid var(--line);border-radius:6px;background:var(--filled);font-variant-numeric:tabular-nums}
+.strip .v.new{border-color:var(--accent)}
+.strip .v.cur{background:var(--hl);color:#1b1b1b;border-color:#1b1b1b}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:5px;border:1.5px solid var(--line)}
+.rail{display:flex;flex-direction:column;gap:14px}
+.rail h3{font:700 13px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.ask{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ask label{font-family:var(--mono);font-size:18px;font-weight:600}
+.ask input{font:600 18px var(--mono);width:96px;padding:7px 10px;border:1.5px solid var(--ink);border-radius:8px;background:var(--cell-bg);color:var(--ink)}
+.btn{font:600 14px var(--body);border:1.5px solid var(--ink);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn.primary{background:var(--ink);color:var(--paper)}
+.btn.small{padding:4px 10px;font-size:13px}
+.btn:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.msg{margin-top:12px;padding:10px 12px;border-radius:8px;border-left:4px solid var(--line);background:var(--filled);font-size:14px}
+.msg.good{border-color:var(--good)}
+.msg.bad{border-color:var(--bad)}
+.msg.info{border-color:var(--accent)}
+.msg code,.formula code{font-family:var(--mono);font-size:13px}
+.formula{font-family:var(--mono);font-size:14px;padding:10px 12px;background:var(--filled);border-radius:8px;margin-top:10px;line-height:1.6}
+.stats{margin-top:12px;display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.stats b{color:var(--ink)}
+.stars{font-size:30px;letter-spacing:4px;color:#d9a300}
+.stars .off{color:var(--line)}
+.code{font-family:var(--mono);font-size:12px;line-height:1.55;background:var(--filled);border-radius:8px;padding:8px 0;overflow-x:auto}
+.code div{padding:0 12px;white-space:pre;border-left:3px solid transparent}
+.code div.hl{background:color-mix(in srgb,var(--hl) 38%,transparent);border-left-color:#c79c00}
+.code .k{color:var(--accent);font-weight:600}
+.code .c{color:var(--muted);font-style:italic}
+.tabs{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.tabs h3{margin:0}
+input[type=range]{accent-color:var(--accent);width:120px}
+.recipe{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.recipe h2{font-family:var(--display);font-size:22px;margin:0 0 4px;grid-column:1/-1}
+.step{border-top:2px solid var(--ink);padding-top:8px}
+.step b{font-family:var(--display);font-size:16px;display:block;margin-bottom:2px}
+.step p{margin:0;color:var(--muted);font-size:14px}
+table.ident{border-collapse:collapse;font-size:13.5px;width:100%}
+table.ident td,table.ident th{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left}
+table.ident th{color:var(--muted);font-weight:500}
+table.ident td.m{font-family:var(--mono)}
+.bug{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.bug pre{margin:0;font:12.5px/1.55 var(--mono);padding:10px 12px;border-radius:8px;background:var(--filled);overflow-x:auto;border-left:4px solid var(--bad)}
+.bug pre.ok{border-left-color:var(--good)}
+.kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px}
+.muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Grid Path <span>DP</span> Trainer</h1>
+      <p class="thesis">Every cell asks one question: <b>how did I get here?</b> Only from above or from the left. You fill the table, and the code shows which line you just ran.</p>
+    </div>
+    <div class="seg" role="group" aria-label="View">
+      <button data-view="play" aria-pressed="true">Play</button>
+      <button data-view="watch" aria-pressed="false">Watch</button>
+      <button data-view="edit" aria-pressed="false">Edit board</button>
+    </div>
+  </header>
+
+  <div class="bar">
+    <div class="seg" role="group" aria-label="Problem">
+      <button data-mode="count" aria-pressed="true">Count paths</button>
+      <button data-mode="min" aria-pressed="false">Cheapest path</button>
+      <button data-mode="max" aria-pressed="false">Most coins</button>
+    </div>
+    <div class="levels" id="levels"></div>
+  </div>
+
+  <div class="main">
+    <section class="card boardcard">
+      <div class="boardhead"><h2 id="pTitle"></h2><span class="lc" id="pLc"></span></div>
+      <p class="stmt" id="pStmt"></p>
+      <div class="rec" id="pRec"></div>
+      <div id="boardWrap"><div class="board" id="board"></div></div>
+      <div class="strip" id="strip"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <aside class="rail">
+      <div class="card" id="panel"></div>
+      <div class="card">
+        <div class="tabs"><h3>The code, live</h3>
+          <div class="seg" role="group" aria-label="Code version">
+            <button data-tab="2d" aria-pressed="true">2D table</button>
+            <button data-tab="1d" aria-pressed="false">1D row</button>
+          </div>
+        </div>
+        <div class="code" id="code"></div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="card recipe">
+    <h2>The recipe you can reuse for every grid DP</h2>
+    <div class="step"><b>1. Name the cell</b><p><code>dp[i][j]</code> = the answer if the grid ended at (i, j): ways to reach it, cheapest cost to reach it, most coins on arrival.</p></div>
+    <div class="step"><b>2. Look up and left</b><p>Moves are right or down, so you can only arrive from <code>(i−1, j)</code> or <code>(i, j−1)</code>. Combine those two: add, min, or max.</p></div>
+    <div class="step"><b>3. Rocks and off-grid get the identity</b><p>Give them the value that can't affect the combine. Then the same line of code works on edges and next to rocks.</p></div>
+    <div class="step"><b>4. Seed only the start</b><p>Set <code>dp[0][0]</code> directly. Don't hard-code the whole first row or column. That shortcut is where most rock bugs come from.</p></div>
+    <div class="step"><b>5. Fill in dependency order</b><p>Any order works as long as top and left are done before the cell. Row by row is the usual choice. That's also why a single row is enough memory.</p></div>
+    <div class="step"><b>Identity per problem</b>
+      <table class="ident"><tr><th>Problem</th><th>Combine</th><th>Rock</th></tr>
+        <tr><td>Count</td><td class="m">+</td><td class="m">0</td></tr>
+        <tr><td>Min cost</td><td class="m">min</td><td class="m">∞</td></tr>
+        <tr><td>Max coins</td><td class="m">max</td><td class="m">−∞</td></tr></table>
+    </div>
+    <div class="bug">
+<pre># The bug: pre-filling edges ignores rocks
+for j in range(n): dp[0][j] = 1
+for i in range(m): dp[i][0] = 1
+# a rock at (0,2) still leaves dp[0][3] = 1. Wrong.</pre>
+<pre class="ok"># The fix: one loop for every cell
+top  = dp[i-1][j] if i > 0 else 0   # identity
+left = dp[i][j-1] if j > 0 else 0
+dp[i][j] = 0 if rock else top + left</pre>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+const $ = s => document.querySelector(s);
+const LEVELS = [
+  {name:'Warm-up', map:['...','...','...']},
+  {name:'One rock', map:['...','.#.','...']},
+  {name:'First-row trap', map:['..#..','.....','.....']},
+  {name:'First-column trap', map:['...','...','#..','...','...']},
+  {name:'Blocked start', map:['#...','....','....']},
+  {name:'No way through', map:['...#.','..#..','.#...','#....']},
+  {name:'The maze', map:['.......','.#..#..','...#...','#....#.','..#....','....#..']},
+  {name:'Big board', map:['........','..#...#.','.#..#...','....#.#.','#.#.....','...#..#.','.#...#..','...#....']},
+];
+const MODES = {
+  count:{name:'Count paths', lc:'LeetCode 63 · Unique Paths II', ident:0, weight:null,
+    stmt:'How many different routes go from S to G, moving only right or down and never onto a rock?',
+    rec:'dp[i][j] = dp[i−1][j] + dp[i][j−1]      rock → 0, start → 1'},
+  min:{name:'Cheapest path', lc:'LeetCode 64 · Minimum Path Sum, with rocks', ident:Infinity, weight:'cost',
+    stmt:'Every cell charges its cost (the small corner number) when you step on it, S and G included. What is the cheapest route from S to G?',
+    rec:'dp[i][j] = cost[i][j] + min(dp[i−1][j], dp[i][j−1])      rock → ∞'},
+  max:{name:'Most coins', lc:'Max-collect grid · same shape as LeetCode 64', ident:-Infinity, weight:'coins',
+    stmt:'Every cell holds some coins (corner number). Pick one right/down route from S to G that collects the most.',
+    rec:'dp[i][j] = coins[i][j] + max(dp[i−1][j], dp[i][j−1])      rock → −∞'},
+};
+const CODE = {
+  count:{
+    '2d':{lines:[
+'def unique_paths(grid):',
+'    m, n = len(grid), len(grid[0])',
+'    dp = [[0] * n for _ in range(m)]',
+'    for i in range(m):',
+'        for j in range(n):',
+'            if grid[i][j] == 1:          # rock',
+'                dp[i][j] = 0',
+'            elif i == 0 and j == 0:      # start',
+'                dp[i][j] = 1',
+'            else:',
+'                top  = dp[i-1][j] if i > 0 else 0',
+'                left = dp[i][j-1] if j > 0 else 0',
+'                dp[i][j] = top + left',
+'    return dp[m-1][n-1]'], init:[2], obstacle:[5,6], start:[7,8], general:[9,10,11,12], done:[13]},
+    '1d':{lines:[
+'def unique_paths(grid):',
+'    m, n = len(grid), len(grid[0])',
+'    dp = [0] * n        # one row: dp[j] = ways to reach (i, j)',
+'    for i in range(m):',
+'        for j in range(n):',
+'            if grid[i][j] == 1:',
+'                dp[j] = 0',
+'            elif i == 0 and j == 0:',
+'                dp[j] = 1',
+'            elif j > 0:',
+'                dp[j] += dp[j-1]   # old dp[j] is top, dp[j-1] is left',
+'            # j == 0: dp[0] keeps its top value',
+'    return dp[n-1]'], init:[2], obstacle:[5,6], start:[7,8], general:[9,10], generalJ0:[11], done:[12]}
+  },
+  min:{
+    '2d':{lines:[
+'def min_path_cost(grid, cost):',
+'    m, n = len(grid), len(grid[0])',
+"    INF = float('inf')",
+'    dp = [[INF] * n for _ in range(m)]',
+'    for i in range(m):',
+'        for j in range(n):',
+'            if grid[i][j] == 1:          # rock: unreachable',
+'                dp[i][j] = INF',
+'            elif i == 0 and j == 0:      # start pays its own cost',
+'                dp[i][j] = cost[0][0]',
+'            else:',
+'                top  = dp[i-1][j] if i > 0 else INF',
+'                left = dp[i][j-1] if j > 0 else INF',
+'                dp[i][j] = cost[i][j] + min(top, left)',
+'    ans = dp[m-1][n-1]',
+'    return ans if ans < INF else -1'], init:[2,3], obstacle:[6,7], start:[8,9], general:[10,11,12,13], done:[14,15]},
+    '1d':{lines:[
+'def min_path_cost(grid, cost):',
+'    m, n = len(grid), len(grid[0])',
+"    INF = float('inf')",
+'    dp = [INF] * n',
+'    for i in range(m):',
+'        for j in range(n):',
+'            if grid[i][j] == 1:',
+'                dp[j] = INF',
+'            elif i == 0 and j == 0:',
+'                dp[j] = cost[0][0]',
+'            else:',
+'                left = dp[j-1] if j > 0 else INF',
+'                dp[j] = cost[i][j] + min(dp[j], left)  # dp[j] is still top',
+'    return dp[n-1] if dp[n-1] < INF else -1'], init:[2,3], obstacle:[6,7], start:[8,9], general:[10,11,12], done:[13]}
+  },
+  max:{
+    '2d':{lines:[
+'def max_coins(grid, coins):',
+'    m, n = len(grid), len(grid[0])',
+"    NEG = float('-inf')",
+'    dp = [[NEG] * n for _ in range(m)]',
+'    for i in range(m):',
+'        for j in range(n):',
+'            if grid[i][j] == 1:          # rock: unreachable',
+'                dp[i][j] = NEG',
+'            elif i == 0 and j == 0:',
+'                dp[i][j] = coins[0][0]',
+'            else:',
+'                top  = dp[i-1][j] if i > 0 else NEG',
+'                left = dp[i][j-1] if j > 0 else NEG',
+'                best = max(top, left)',
+'                dp[i][j] = coins[i][j] + best if best > NEG else NEG',
+'    ans = dp[m-1][n-1]',
+'    return ans if ans > NEG else -1'], init:[2,3], obstacle:[6,7], start:[8,9], general:[10,11,12,13,14], done:[15,16]},
+    '1d':{lines:[
+'def max_coins(grid, coins):',
+'    m, n = len(grid), len(grid[0])',
+"    NEG = float('-inf')",
+'    dp = [NEG] * n',
+'    for i in range(m):',
+'        for j in range(n):',
+'            if grid[i][j] == 1:',
+'                dp[j] = NEG',
+'            elif i == 0 and j == 0:',
+'                dp[j] = coins[0][0]',
+'            else:',
+'                left = dp[j-1] if j > 0 else NEG',
+'                best = max(dp[j], left)          # dp[j] is still top',
+'                dp[j] = coins[i][j] + best if best > NEG else NEG',
+'    return dp[n-1] if dp[n-1] > NEG else -1'], init:[2,3], obstacle:[6,7], start:[8,9], general:[10,11,12,13], done:[14]}
+  }
+};
+
+const S = {mode:'count', level:0, view:'play', tab:'2d', R:3, C:3, obs:[], cost:[], coins:[], dp:[],
+  filled:[], phase:'fill', sel:null, mistakes:0, hints:0, hintShown:false, msg:null, trace:[], path:new Set(),
+  k:0, timer:null, speed:600, anim:null, animInfo:null, custom:null, doneHtml:'', stars:0, flash:null, shake:null};
+
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const key=(i,j)=>i+','+j;
+const fmt=v=>v===Infinity?'∞':v===-Infinity?'−∞':String(v);
+const val=(i,j)=>S.mode==='min'?S.cost[i][j]:S.coins[i][j];
+const kind=(i,j)=>S.obs[i][j]?'obstacle':(i===0&&j===0)?'start':'general';
+const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
+
+function makeWeights(R,C,seed){const r=rng(seed),cost=[],coins=[];for(let i=0;i<R;i++){cost.push([]);coins.push([]);for(let j=0;j<C;j++){cost[i].push(1+Math.floor(r()*9));coins[i].push(Math.floor(r()*6));}}return{cost,coins};}
+
+function setupBoard(){
+  if(S.level===-1){
+    const c=S.custom; S.R=c.obs.length; S.C=c.obs[0].length;
+    S.obs=c.obs.map(r=>r.slice()); S.cost=c.cost.map(r=>r.slice()); S.coins=c.coins.map(r=>r.slice());
+  } else {
+    const map=LEVELS[S.level].map; S.R=map.length; S.C=map[0].length;
+    S.obs=map.map(r=>[...r].map(ch=>ch==='#'));
+    const w=makeWeights(S.R,S.C,1000+S.level*77); S.cost=w.cost; S.coins=w.coins;
+  }
+}
+function computeDP(){
+  const id=MODES[S.mode].ident, dp=[];
+  for(let i=0;i<S.R;i++){dp.push([]);for(let j=0;j<S.C;j++){let v;
+    if(S.obs[i][j]) v=id;
+    else if(i===0&&j===0) v=S.mode==='count'?1:val(0,0);
+    else{const t=i>0?dp[i-1][j]:id, l=j>0?dp[i][j-1]:id;
+      if(S.mode==='count') v=t+l;
+      else if(S.mode==='min'){const b=Math.min(t,l); v=b===Infinity?Infinity:val(i,j)+b;}
+      else {const b=Math.max(t,l); v=b===-Infinity?-Infinity:val(i,j)+b;}}
+    dp[i].push(v);}}
+  S.dp=dp;
+}
+function nb(i,j){const id=MODES[S.mode].ident;return{t:i>0?S.dp[i-1][j]:id,l:j>0?S.dp[i][j-1]:id,tOff:i===0,lOff:j===0};}
+
+function explain(i,j){
+  const k=kind(i,j), m=S.mode, d=S.dp[i][j], N=`dp[${i}][${j}]`;
+  if(k==='obstacle') return `<code>${N}</code> is a rock → <b>${fmt(MODES[m].ident)}</b>. `+({count:'No route passes through it, so it adds nothing.',min:'Unreachable, so it costs ∞ and never wins a min.',max:'Unreachable, so it is −∞ and never wins a max.'})[m];
+  if(k==='start') return m==='count'?`<code>${N}</code> is the start → <b>1</b>. There is exactly one way to be where you began.`:`<code>${N}</code> is the start → its own ${MODES[m].weight}, <b>${val(i,j)}</b>.`;
+  const {t,l,tOff,lOff}=nb(i,j), T=`top ${fmt(t)}${tOff?' (off-grid)':''}`, L=`left ${fmt(l)}${lOff?' (off-grid)':''}`;
+  if(m==='count') return `<code>${N} = ${T} + ${L} = <b>${fmt(d)}</b></code>`;
+  const c=val(i,j);
+  if(m==='min'){const b=Math.min(t,l); if(b===Infinity) return `<code>${N}</code>: min(${T}, ${L}) = ∞, so this cell is unreachable → <b>∞</b>`; return `<code>${N} = cost ${c} + min(${T}, ${L}) = ${c} + ${fmt(b)} = <b>${d}</b></code>`;}
+  const b=Math.max(t,l); if(b===-Infinity) return `<code>${N}</code>: max(${T}, ${L}) = −∞, so this cell is unreachable → <b>−∞</b>`;
+  return `<code>${N} = coins ${c} + max(${T}, ${L}) = ${c} + ${fmt(b)} = <b>${d}</b></code>`;
+}
+function hintText(i,j){
+  const k=kind(i,j), m=S.mode;
+  if(k==='obstacle') return `It's a rock. Which value can never help a ${m==='count'?'sum':m}? (${m==='count'?'adding nothing':'see the identity table'})`;
+  if(k==='start') return m==='count'?'Standing on the start: how many ways are there to be here?':`You stand on the start, so you pay or collect its own value.`;
+  const {t,l,tOff,lOff}=nb(i,j), T=`top = ${fmt(t)}${tOff?' (off-grid)':''}`, L=`left = ${fmt(l)}${lOff?' (off-grid)':''}`;
+  if(m==='count') return `<code>${T}, ${L}</code>. Paths arrive from both, so combine them.`;
+  return `<code>${T}, ${L}, ${m==='min'?'cost':'coins'} here = ${val(i,j)}</code>. Take the ${m==='min'?'smaller':'larger'} neighbor, then add this cell.`;
+}
+function diagnose(i,j,a){
+  const k=kind(i,j), m=S.mode, d=S.dp[i][j], {t,l}=nb(i,j);
+  if(k==='obstacle') return `Rocks get the identity: <b>${fmt(MODES[m].ident)}</b>. ${m==='count'?'Nothing reaches a rock, so 0 ways.':'That way the rock can never be chosen as the best neighbor.'}`;
+  if(k==='start') return m==='count'?'The start counts as <b>1</b> way: you are already there.':`You stand on the start, so it still ${m==='min'?'costs':'gives'} ${val(i,j)}.`;
+  if(m==='count'){
+    if((i===0||j===0)&&a===1&&d===0) return 'The classic bug: the first row/column is not always 1. A rock earlier in this line cuts it off, so the neighbor you arrive from is 0.';
+    if((a===t||a===l)&&t>0&&l>0) return 'You used one neighbor. Paths arrive from the top <i>and</i> from the left, so add both.';
+    return `Look at the two arrows: top is ${fmt(t)}, left is ${fmt(l)}.`;
+  }
+  const c=val(i,j), pick=m==='min'?Math.min(t,l):Math.max(t,l), other=m==='min'?Math.max(t,l):Math.min(t,l);
+  if(!isFinite(d)) return `Both neighbors are ${fmt(MODES[m].ident)} (rock, off-grid, or unreachable). This cell can't be reached either, so it's <b>${fmt(d)}</b>.`;
+  if(a===pick) return `Close: you forgot to add this cell's own ${m==='min'?'cost':'coins'} (${c}).`;
+  if(isFinite(other)&&a===c+other) return `That used the ${m==='min'?'larger':'smaller'} neighbor. ${m==='min'?'Cheapest':'Most coins'} means taking the ${m==='min'?'smaller':'larger'} one.`;
+  if(isFinite(t)&&isFinite(l)&&a===c+t+l) return `Don't add both neighbors. A route arrives from just one of them, so take the ${m}.`;
+  return `Top is ${fmt(t)}, left is ${fmt(l)}, this cell is ${c}.`;
+}
+function parse(s){s=s.trim().toLowerCase().replace(/−/g,'-').replace(/\s+/g,'');
+  if(['inf','∞','i','infinity','+inf','+∞'].includes(s)) return Infinity;
+  if(['-inf','-∞','-i','-infinity'].includes(s)) return -Infinity;
+  if(/^-?\d+$/.test(s)) return parseInt(s,10); return NaN;}
+
+function fillable(i,j){return !S.filled[i][j]&&(i===0||S.filled[i-1][j])&&(j===0||S.filled[i][j-1]);}
+function nextFillable(){for(let i=0;i<S.R;i++)for(let j=0;j<S.C;j++)if(fillable(i,j))return[i,j];return null;}
+function stopTimers(){if(S.timer){clearInterval(S.timer);S.timer=null;}if(S.anim){clearInterval(S.anim);S.anim=null;S.animInfo=null;}}
+
+function resetPlay(){
+  stopTimers(); setupBoard(); computeDP();
+  S.filled=S.obs.map(r=>r.map(o=>o));
+  S.phase='fill'; S.mistakes=0; S.hints=0; S.hintShown=false; S.trace=[]; S.path=new Set(); S.doneHtml=''; S.k=0;
+  S.sel=nextFillable();
+  S.msg={type:'info',html:S.mode==='count'?'Rocks are pre-filled. Type the value for the highlighted cell and press <span class="kbd">Enter</span>. Dashed cells are ready. Faded cells still wait on a neighbor.':'Rocks are pre-filled. Type a number, or <span class="kbd">inf</span> / <span class="kbd">-inf</span>, and press <span class="kbd">Enter</span>.'};
+  if(!S.sel) complete();
+}
+function submit(){
+  if(!S.sel) return; const [i,j]=S.sel; if(!fillable(i,j)) return;
+  const inp=$('#ans'); const a=parse(inp?inp.value:'');
+  if(Number.isNaN(a)){S.msg={type:'bad',html:'Type a whole number, or <span class="kbd">inf</span> / <span class="kbd">-inf</span> for ∞ / −∞.'};render();return;}
+  if(a===S.dp[i][j]){
+    S.filled[i][j]=true; S.flash=key(i,j); S.hintShown=false;
+    S.msg={type:'good',html:'✓ '+explain(i,j)};
+    S.sel=nextFillable(); if(!S.sel) complete();
+  } else { S.mistakes++; S.shake=key(i,j); S.msg={type:'bad',html:diagnose(i,j,a)}; }
+  render();
+}
+function complete(){
+  const g=S.dp[S.R-1][S.C-1];
+  if(S.mode==='count'){finish(g>0?`There are <b>${g}</b> unique paths from S to G. That is <code>dp[${S.R-1}][${S.C-1}]</code>.`:`<code>dp[G] = 0</code>: no route exists, and the function returns 0.`);return;}
+  if(!isFinite(g)){finish(`G is ${fmt(g)}, so it's unreachable. The function returns −1.`);return;}
+  S.phase='trace'; S.trace=[[S.R-1,S.C-1]]; S.path=new Set([key(S.R-1,S.C-1)]);
+  S.msg={type:'info',html:`Table done: the best total is <b>${g}</b>. Now rebuild the route. Starting at G, click the neighbor (above or left) its value came from. This is how you return the path itself in an interview.`};
+}
+function finish(html){
+  S.phase='done'; S.sel=null; S.doneHtml=html;
+  S.stars=(S.mistakes===0&&S.hints===0)?3:S.mistakes<=2?2:1;
+  if(S.level>=0){const k=`gdp:${S.mode}:${S.level}`;const prev=+(store.get(k)||0);if(S.stars>prev)store.set(k,S.stars);}
+  S.msg=null;
+}
+function traceClick(i,j){
+  const [hi,hj]=S.trace[S.trace.length-1], adj=(i===hi-1&&j===hj)||(i===hi&&j===hj-1), c=val(hi,hj);
+  if(!adj){S.mistakes++;S.shake=key(i,j);S.msg={type:'bad',html:`A route reaches (${hi}, ${hj}) only from directly above or directly left. Pick one of the dashed cells.`};return;}
+  if(S.obs[i][j]||!isFinite(S.dp[i][j])){S.mistakes++;S.shake=key(i,j);S.msg={type:'bad',html:`That neighbor is ${fmt(S.dp[i][j])}, unreachable. The route can't come from there.`};return;}
+  if(S.dp[hi][hj]!==c+S.dp[i][j]){S.mistakes++;S.shake=key(i,j);S.msg={type:'bad',html:`<code>${c} + ${S.dp[i][j]} = ${c+S.dp[i][j]}</code>, but this cell holds ${S.dp[hi][hj]}. Its value came from the other neighbor.`};return;}
+  S.trace.push([i,j]); S.path.add(key(i,j)); S.flash=key(i,j);
+  if(i===0&&j===0){finish(`Route rebuilt. Total ${MODES[S.mode].weight}: <b>${S.dp[S.R-1][S.C-1]}</b> over ${S.trace.length} cells.`);return;}
+  S.msg={type:'good',html:`✓ <code>${S.dp[hi][hj]} = ${c} + ${S.dp[i][j]}</code>. Keep walking back.`};
+}
+function enumPaths(cap){const out=[],cur=[];(function dfs(i,j){if(out.length>=cap||i>=S.R||j>=S.C||S.obs[i][j])return;cur.push(key(i,j));if(i===S.R-1&&j===S.C-1)out.push(cur.slice());else{dfs(i,j+1);dfs(i+1,j);}cur.pop();})(0,0);return out;}
+function animatePaths(){
+  stopTimers(); const paths=enumPaths(400); if(!paths.length)return;
+  let k=0; const ms=Math.max(70,Math.min(550,Math.round(7000/paths.length)));
+  const tick=()=>{S.path=new Set(paths[k]); S.animInfo={k:k+1,N:paths.length,total:S.dp[S.R-1][S.C-1]}; renderBoard(); renderPanel(); k++; if(k>=paths.length){clearInterval(S.anim);S.anim=null;}};
+  tick(); S.anim=setInterval(tick,ms);
+}
+
+/* ---------- watch ---------- */
+function watchCur(){if(S.k<=0)return null;const x=S.k-1;return[Math.floor(x/S.C),x%S.C];}
+function watchStep(d){S.k=Math.max(0,Math.min(S.R*S.C,S.k+d));if(S.k>=S.R*S.C&&S.timer){clearInterval(S.timer);S.timer=null;}render();}
+function togglePlay(){if(S.timer){clearInterval(S.timer);S.timer=null;}else{if(S.k>=S.R*S.C)S.k=0;S.timer=setInterval(()=>watchStep(1),S.speed);}render();}
+
+/* ---------- edit ---------- */
+function toCustom(){S.custom={obs:S.obs.map(r=>r.slice()),cost:S.cost.map(r=>r.slice()),coins:S.coins.map(r=>r.slice())};S.level=-1;}
+function resize(dr,dc){
+  const R=Math.max(2,Math.min(8,S.R+dr)), C=Math.max(2,Math.min(8,S.C+dc)); if(R===S.R&&C===S.C)return;
+  const w=makeWeights(R,C,Math.floor(Math.random()*1e9)), obs=[];
+  for(let i=0;i<R;i++){obs.push([]);for(let j=0;j<C;j++){const has=i<S.R&&j<S.C;obs[i].push(has?S.obs[i][j]:false);if(has){w.cost[i][j]=S.cost[i][j];w.coins[i][j]=S.coins[i][j];}}}
+  S.custom={obs,cost:w.cost,coins:w.coins}; S.level=-1; setupBoard(); computeDP();
+}
+function randomBoard(){
+  const R=4+Math.floor(Math.random()*4), C=4+Math.floor(Math.random()*5), obs=[];
+  for(let i=0;i<R;i++){obs.push([]);for(let j=0;j<C;j++)obs[i].push(Math.random()<0.2&&!(i===0&&j===0)&&!(i===R-1&&j===C-1));}
+  const w=makeWeights(R,C,Math.floor(Math.random()*1e9)); S.custom={obs,cost:w.cost,coins:w.coins}; S.level=-1;
+}
+
+/* ---------- render ---------- */
+function render(){renderTop();sizeBoard();renderBoard();renderStrip();renderPanel();renderCode();}
+function renderTop(){
+  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===S.mode));
+  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===S.view));
+  document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tab===S.tab));
+  let h=LEVELS.map((L,idx)=>{const st=+(store.get(`gdp:${S.mode}:${idx}`)||0);return `<button class="chip" data-level="${idx}" aria-pressed="${S.level===idx}">${idx+1}. ${L.name}<span class="st ${st?'has':''}">${'★'.repeat(st)}${'☆'.repeat(3-st)}</span></button>`;}).join('');
+  h+=`<button class="chip" data-act="random" aria-pressed="${S.level===-1}">${S.level===-1?'Custom board':'Random board'}</button>`;
+  $('#levels').innerHTML=h;
+  const M=MODES[S.mode]; $('#pTitle').textContent=M.name; $('#pLc').textContent=M.lc; $('#pStmt').textContent=M.stmt; $('#pRec').textContent=M.rec;
+  $('#legend').innerHTML=`<span><i style="background:repeating-linear-gradient(45deg,var(--rock) 0 3px,var(--rock2) 3px 6px)"></i>Rock</span><span><i style="background:var(--hl)"></i>Cell you're computing</span><span><i style="box-shadow:inset 0 0 0 2px var(--accent)"></i>Its top and left inputs</span>${S.mode!=='count'?`<span><i style="background:var(--path);border-color:var(--path)"></i>Route</span>`:`<span><i style="background:var(--path);border-color:var(--path)"></i>A path</span>`}`;
+}
+function sizeBoard(){const w=$('#boardWrap').clientWidth-4, gap=4; const cell=Math.max(34,Math.min(70,Math.floor((w-(S.C-1)*gap)/S.C))); $('#board').style.setProperty('--cell',cell+'px'); $('#board').style.gridTemplateColumns=`repeat(${S.C}, var(--cell))`;}
+function currentCell(){if(S.view==='play')return S.sel;if(S.view==='watch')return watchCur();return null;}
+function shows(i,j){if(S.view==='play')return S.filled[i][j];if(S.view==='watch')return i*S.C+j<S.k;return false;}
+function renderBoard(){
+  const cur=currentCell(), curGen=cur&&kind(cur[0],cur[1])==='general';
+  const head=S.view==='play'&&S.phase==='trace'?S.trace[S.trace.length-1]:null;
+  let h='';
+  for(let i=0;i<S.R;i++)for(let j=0;j<S.C;j++){
+    const c=['cell'], k=key(i,j), shown=shows(i,j);
+    if(S.obs[i][j])c.push('obs');
+    if(shown)c.push('filled');
+    if(S.view==='play'&&S.phase==='fill'&&!S.filled[i][j])c.push(fillable(i,j)?'fillable':'locked');
+    const isCur=cur&&cur[0]===i&&cur[1]===j; if(isCur)c.push('sel');
+    if(curGen&&((i===cur[0]-1&&j===cur[1])||(i===cur[0]&&j===cur[1]-1)))c.push('src');
+    if(S.path.has(k))c.push('path');
+    if(head&&((i===head[0]-1&&j===head[1])||(i===head[0]&&j===head[1]-1)))c.push('cand');
+    if(S.flash===k)c.push('flash'); if(S.shake===k)c.push('shake');
+    let inner='';
+    if(S.mode!=='count'&&!S.obs[i][j])inner+=`<span class="w ${S.mode==='max'?'coin':''}">${val(i,j)}</span>`;
+    if(i===0&&j===0)inner+='<span class="tag">S</span>'; else if(i===S.R-1&&j===S.C-1)inner+='<span class="tag">G</span>';
+    if(shown)inner+=`<span class="dp">${fmt(S.dp[i][j])}</span>`; else if(S.obs[i][j]&&S.view!=='edit')inner+='';
+    if(isCur&&curGen){if(i>0)inner+='<i class="arr at">↓</i>';if(j>0)inner+='<i class="arr al">→</i>';}
+    const label=`row ${i} column ${j}${S.obs[i][j]?', rock':''}${shown?', dp '+fmt(S.dp[i][j]):''}`;
+    h+=`<button class="${c.join(' ')}" data-i="${i}" data-j="${j}" aria-label="${label}">${inner}</button>`;
+  }
+  $('#board').innerHTML=h; S.flash=null; S.shake=null;
+}
+function renderStrip(){
+  const el=$('#strip');
+  if(S.tab!=='1d'){el.innerHTML='';return;}
+  if(S.view!=='watch'){el.innerHTML='<span class="muted">Switch to <b>Watch</b> to see the single 1D row update in place.</span>';return;}
+  const cur=watchCur(), i=cur?cur[0]:0, id=MODES[S.mode].ident; let h=`<span class="lab">dp (one row) on row ${i}:</span>`;
+  for(let j=0;j<S.C;j++){const idx=i*S.C+j, done=idx<S.k; const v=done?S.dp[i][j]:(i>0?S.dp[i-1][j]:id);
+    const cls=['v']; if(cur&&cur[1]===j)cls.push('cur'); else if(done)cls.push('new'); h+=`<span class="${cls.join(' ')}" title="${done?'this row':'still holds the row above'}">${fmt(v)}</span>`;}
+  h+='<span class="muted" style="font-family:var(--body);font-size:12.5px">Left of the yellow box: this row. Right of it: still the row above (that is the "top" value).</span>';
+  el.innerHTML=h;
+}
+function renderPanel(){
+  const p=$('#panel'); let h='';
+  if(S.view==='edit'){
+    h=`<h3>Edit board</h3><p class="muted" style="margin:0 0 10px">Click a cell to add or remove a rock. Try a rock on S or G, or a full wall, and predict the answer before you play.</p>
+    <div class="row" style="margin-bottom:8px"><span style="width:60px">Rows ${S.R}</span><button class="btn small" data-act="r-">−</button><button class="btn small" data-act="r+">+</button></div>
+    <div class="row" style="margin-bottom:12px"><span style="width:60px">Cols ${S.C}</span><button class="btn small" data-act="c-">−</button><button class="btn small" data-act="c+">+</button></div>
+    <div class="row"><button class="btn" data-act="reroll">New costs and coins</button><button class="btn" data-act="clear">Clear rocks</button><button class="btn primary" data-view="play">Play this board</button></div>`;
+  } else if(S.view==='watch'){
+    const N=S.R*S.C, cur=watchCur();
+    h=`<h3>Watch the loop run</h3><div class="row">
+      <button class="btn small" data-act="w0" aria-label="Back to start">|◀</button><button class="btn small" data-act="w-" aria-label="Previous cell">◀ Prev</button>
+      <button class="btn small primary" data-act="wp">${S.timer?'Pause':'Play'}</button><button class="btn small" data-act="w+" aria-label="Next cell">Next ▶</button><button class="btn small" data-act="wN" aria-label="Jump to end">▶|</button></div>
+      <div class="row" style="margin-top:10px"><label for="spd" class="muted" style="font-size:13px">Speed</label><input id="spd" type="range" min="150" max="1400" step="50" value="${1550-S.speed}"><span class="muted" style="font-size:13px">Cell ${S.k} of ${N}</span></div>
+      <div class="formula">${cur?explain(cur[0],cur[1]):`The table starts as <b>${fmt(MODES[S.mode].ident)}</b> everywhere. Press <b>Next</b> (or <span class="kbd">→</span>) to compute <code>dp[0][0]</code>.`}
+      ${S.k>=N?`<br><br>Return <code>dp[${S.R-1}][${S.C-1}]</code> = <b>${fmt(S.dp[S.R-1][S.C-1])}</b>${S.mode!=='count'&&!isFinite(S.dp[S.R-1][S.C-1])?' → −1':''}.`:''}</div>`;
+  } else if(S.phase==='done'){
+    const g=S.dp[S.R-1][S.C-1];
+    h=`<h3>Solved</h3><div class="stars" aria-label="${S.stars} of 3 stars">${'★'.repeat(S.stars)}<span class="off">${'★'.repeat(3-S.stars)}</span></div>
+      <p style="margin:6px 0 0">${S.doneHtml}</p>
+      <div class="stats"><span>Mistakes <b>${S.mistakes}</b></span><span>Hints <b>${S.hints}</b></span></div>
+      ${S.animInfo?`<div class="msg info">Path <b>${S.animInfo.k}</b> of ${S.animInfo.N}${S.animInfo.N<S.animInfo.total?` (showing the first ${S.animInfo.N} of ${S.animInfo.total})`:''}. Each is one of the routes your table counted.</div>`:''}
+      <div class="row" style="margin-top:14px">
+        ${S.mode==='count'&&g>0?`<button class="btn" data-act="anim">${S.anim?'Stop':'Show every path'}</button>`:''}
+        <button class="btn" data-act="replay">Play again</button>
+        ${S.level>=0&&S.level<LEVELS.length-1?'<button class="btn primary" data-act="next">Next level</button>':'<button class="btn primary" data-act="random">Random board</button>'}
+      </div>
+      <p class="muted" style="font-size:13px;margin:12px 0 0">Same board, different combine: try it as ${['count','min','max'].filter(m=>m!==S.mode).map(m=>`<a href="#" data-goto="${m}">${MODES[m].name}</a>`).join(' or ')}.</p>`;
+  } else if(S.phase==='trace'){
+    h=`<h3>Rebuild the route</h3><p class="muted" style="margin:0">Walk backwards from G. At each cell, pick the neighbor whose value plus this cell's ${MODES[S.mode].weight} gives this cell's dp.</p>
+      ${S.msg?`<div class="msg ${S.msg.type}">${S.msg.html}</div>`:''}
+      <div class="stats"><span>Mistakes <b>${S.mistakes}</b></span><span>Steps back <b>${S.trace.length-1}</b></span></div>`;
+  } else {
+    const sel=S.sel, done=S.filled.flat().filter(Boolean).length, N=S.R*S.C;
+    if(sel&&fillable(sel[0],sel[1])){
+      h=`<h3>Your turn</h3><form class="ask" id="askf"><label for="ans">dp[${sel[0]}][${sel[1]}] =</label><input id="ans" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="?"><button class="btn primary" type="submit">Check</button></form>
+        <div class="row" style="margin-top:10px">${S.mode!=='count'?'<button class="btn small" data-act="ins" data-v="inf">∞</button><button class="btn small" data-act="ins" data-v="-inf">−∞</button>':''}<button class="btn small" data-act="hint">Hint</button></div>
+        ${S.hintShown?`<div class="msg info">${hintText(sel[0],sel[1])}</div>`:''}`;
+    } else if(sel&&S.filled[sel[0]][sel[1]]){
+      h=`<h3>Review</h3><div class="formula">${explain(sel[0],sel[1])}</div>`;
+    } else if(sel){
+      const [i,j]=sel, need=[]; if(i>0&&!S.filled[i-1][j])need.push(`top dp[${i-1}][${j}]`); if(j>0&&!S.filled[i][j-1])need.push(`left dp[${i}][${j-1}]`);
+      h=`<h3>Locked</h3><div class="msg bad">dp[${i}][${j}] needs ${need.join(' and ')} first. Each cell waits for the cell above it and the cell to its left. That rule sets the loop order.</div>`;
+    } else h='<h3>Your turn</h3>';
+    if(S.msg&&!(sel&&!fillable(sel[0],sel[1])&&!S.filled[sel[0]][sel[1]]))h+=`<div class="msg ${S.msg.type}">${S.msg.html}</div>`;
+    h+=`<div class="stats"><span>Filled <b>${done}/${N}</b></span><span>Mistakes <b>${S.mistakes}</b></span><span>Hints <b>${S.hints}</b></span></div>
+      <p class="muted" style="font-size:12.5px;margin:10px 0 0">Tip: you can click any dashed cell. Column-by-column works too, as long as top and left are done.</p>`;
+  }
+  p.innerHTML=h;
+  const f=$('#askf'); if(f){f.addEventListener('submit',e=>{e.preventDefault();submit();}); const inp=$('#ans'); if(document.activeElement===document.body||document.activeElement===null||document.activeElement.closest('#panel,#board'))inp.focus({preventScroll:true});}
+  const spd=$('#spd'); if(spd)spd.addEventListener('input',e=>{S.speed=1550-(+e.target.value); if(S.timer){clearInterval(S.timer);S.timer=setInterval(()=>watchStep(1),S.speed);}});
+}
+function renderCode(){
+  const C=CODE[S.mode][S.tab]; let hl=[];
+  const cur=currentCell();
+  if(S.view==='watch'&&S.k===0)hl=C.init;
+  else if(S.view==='watch'&&S.k>=S.R*S.C)hl=C.done;
+  else if(S.view==='play'&&S.phase!=='fill')hl=C.done;
+  else if(cur){const k=kind(cur[0],cur[1]); hl=(k==='general'&&cur[1]===0&&C.generalJ0)?C.generalJ0:C[k];}
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  $('#code').innerHTML=C.lines.map((ln,idx)=>{let code=ln,com='';const ci=ln.indexOf('#');if(ci>=0){code=ln.slice(0,ci);com=ln.slice(ci);}
+    code=esc(code).replace(/\b(def|for|in|if|elif|else|return|and|range|min|max|float|len)\b/g,'<span class="k">$1</span>');
+    return `<div class="${hl.includes(idx)?'hl':''}">${code}${com?`<span class="c">${esc(com)}</span>`:''}${ln===''?' ':''}</div>`;}).join('');
+}
+
+/* ---------- events ---------- */
+function setView(v){
+  stopTimers();
+  if(v==='edit'&&S.level!==-1){toCustom();}
+  S.view=v;
+  if(v==='play')resetPlay(); else {setupBoard();computeDP();S.k=0;S.path=new Set();}
+  render();
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button,a'); if(!t)return;
+  if(t.dataset.view){setView(t.dataset.view);return;}
+  if(t.dataset.mode){S.mode=t.dataset.mode;setView(S.view==='edit'?'play':S.view);return;}
+  if(t.dataset.goto){e.preventDefault();S.mode=t.dataset.goto;setView('play');return;}
+  if(t.dataset.tab){S.tab=t.dataset.tab;render();return;}
+  if(t.dataset.level){S.level=+t.dataset.level;setView(S.view==='edit'?'play':S.view);return;}
+  if(t.classList.contains('cell')){onCell(+t.dataset.i,+t.dataset.j);return;}
+  const a=t.dataset.act; if(!a)return;
+  if(a==='random'){if(S.level===-1&&t.classList.contains('chip')&&S.phase!=='done'){setView(S.view==='edit'?'play':S.view);return;}randomBoard();setView(S.view==='edit'?'play':S.view);}
+  else if(a==='hint'){if(!S.hintShown){S.hints++;S.hintShown=true;}render();}
+  else if(a==='ins'){const inp=$('#ans');if(inp){inp.value=t.dataset.v;inp.focus();}}
+  else if(a==='replay'){resetPlay();render();}
+  else if(a==='next'){S.level++;resetPlay();render();}
+  else if(a==='anim'){if(S.anim){stopTimers();S.path=new Set();render();}else animatePaths();}
+  else if(a==='w0'){S.k=0;render();} else if(a==='w-')watchStep(-1); else if(a==='w+')watchStep(1); else if(a==='wN'){S.k=S.R*S.C;render();} else if(a==='wp')togglePlay();
+  else if(a==='r+'||a==='r-')resize(a==='r+'?1:-1,0),render();
+  else if(a==='c+'||a==='c-')resize(0,a==='c+'?1:-1),render();
+  else if(a==='reroll'){const w=makeWeights(S.R,S.C,Math.floor(Math.random()*1e9));S.custom.cost=w.cost;S.custom.coins=w.coins;setupBoard();computeDP();render();}
+  else if(a==='clear'){S.custom.obs=S.custom.obs.map(r=>r.map(()=>false));setupBoard();computeDP();render();}
+});
+function onCell(i,j){
+  if(S.view==='edit'){S.custom.obs[i][j]=!S.custom.obs[i][j];setupBoard();computeDP();render();return;}
+  if(S.view==='watch'){S.k=i*S.C+j+1;render();return;}
+  if(S.phase==='fill'){S.sel=[i,j];S.hintShown=false;S.msg=null;render();return;}
+  if(S.phase==='trace'){traceClick(i,j);render();}
+}
+document.addEventListener('keydown',e=>{
+  const inInput=e.target.tagName==='INPUT'&&e.target.type!=='range';
+  if(S.view==='watch'&&!inInput){if(e.key==='ArrowRight'){e.preventDefault();watchStep(1);}else if(e.key==='ArrowLeft'){e.preventDefault();watchStep(-1);}else if(e.key===' '&&e.target.tagName!=='BUTTON'){e.preventDefault();togglePlay();}return;}
+  if(S.view==='play'&&S.phase==='fill'&&S.sel){
+    const d={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];
+    if(d&&!(inInput&&(e.key==='ArrowLeft'||e.key==='ArrowRight'))){e.preventDefault();const i=Math.max(0,Math.min(S.R-1,S.sel[0]+d[0])),j=Math.max(0,Math.min(S.C-1,S.sel[1]+d[1]));S.sel=[i,j];S.hintShown=false;S.msg=null;render();return;}
+    if(!inInput&&/^[0-9\-i]$/.test(e.key)){const inp=$('#ans');if(inp){inp.focus();}}
+  }
+});
+let rz; window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{sizeBoard();},80);});
+
+function start(data){
+  if(data&&data.mode&&MODES[data.mode])S.mode=data.mode;
+  if(data&&typeof data.level==='number'&&data.level>=0&&data.level<LEVELS.length)S.level=data.level;
+  if(data&&data.tab)S.tab=data.tab;
+  const v=data&&['play','watch'].includes(data.view)?data.view:'play';
+  S.view=v; if(v==='play')resetPlay(); else {setupBoard();computeDP();}
+  render();
+}
+window.claude?.hot?.snapshot?.(()=>({mode:S.mode,level:S.level,view:S.view,tab:S.tab}));
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>
