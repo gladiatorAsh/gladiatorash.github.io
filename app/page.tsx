@@ -179,7 +179,11 @@ export default function Home() {
               <a className="link" href="/play/raigad/">
                 hold Raigad
               </a>
-              , a tower-defense game set on the Maratha hill fort.
+              , a tower-defense game set on the Maratha hill fort. Prepping for interviews? The{" "}
+              <a className="link" href="/play/grid-dp/">
+                Grid Path DP Trainer
+              </a>{" "}
+              has you fill the DP table for grid path problems cell by cell, with the matching Python line highlighted as you go.
             </p>
           </Chapter>
 
